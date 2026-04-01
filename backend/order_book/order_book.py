@@ -2,6 +2,7 @@ import heapq
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+from typing import Optional
 
 class OrderSide(Enum):
     BUY = "BUY"
@@ -14,11 +15,7 @@ class Order:
     side: OrderSide
     price: float
     quantity: float
-    timestamp: datetime = None
-    
-    def __post_init__(self):
-        if self.timestamp is None:
-            self.timestamp = datetime.now()
+    timestamp: datetime = datetime.now()
 
 class OrderBook:
     def __init__(self):
@@ -34,7 +31,7 @@ class OrderBook:
         heapq.heappush(self.sell_heap, (order.price, order.timestamp, order.order_id))
         self.orders[order.order_id] = order
     
-    def best_buy(self) -> Order:
+    def best_buy(self) -> Optional[Order]:
         if not self.buy_heap:
             return None
         while self.buy_heap:
@@ -45,7 +42,7 @@ class OrderBook:
             
         return None
     
-    def best_sell(self) -> Order:
+    def best_sell(self) -> Optional[Order]:
         if not self.sell_heap:
             return None
         
@@ -61,7 +58,7 @@ class OrderBook:
         if id in self.orders:
             del self.orders[id]
     
-    def can_match(self) -> bool:
+    def can_match(self) -> Optional[bool]:
         best_buy = self.best_buy()
         best_sell = self.best_sell()
         return best_buy and best_sell and best_buy.price >= best_sell.price

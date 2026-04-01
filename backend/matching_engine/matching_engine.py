@@ -1,13 +1,15 @@
 from backend.order_book.order_book import OrderBook
-from typing import Optional
+from typing import Optional, List
+from datetime import datetime
 
 class Stock:
-    def __init__(self, stock_id: str, stock_name: str, symbol: str, price: float = 50):
+    def __init__(self, stock_id: str, stock_name: str, symbol: str, price: float = 50, about: Optional[str] = None):
         self.stock_id = stock_id
         self.stock_name = stock_name
         self.symbol = symbol
         self.order_book = OrderBook()
         self.price = price
+        self.about = about
         
     
 stocks = {
@@ -18,22 +20,26 @@ stocks = {
 }
 
 class Trade: 
-    def __init__(self, symbol: str, price: float, quantity: float):
+    def __init__(self, symbol: str, price: float, quantity: float, buy_order_id: str, sell_order_id: str, timestamp):
         self.symbol = symbol
         self.price = price
         self.quantity = quantity
+        self.buy_order_id = buy_order_id
+        self.sell_order_id = sell_order_id 
+        self.timestamp = timestamp
 
 class MatchingEngine:
     def __init__(self):
         self.stocks = stocks
         
-    async def process_order(self, order) -> Optional[Trade]:
+    async def process_order(self, order) -> Optional[List[Trade]]:
         stock = self.stocks[order.symbol]
         if order.side == "BUY":
             stock.order_book.add_buy_order(order)
         else:
             stock.order_book.add_sell_order(order)
         
+        trades = []
         while stock.order_book.can_match():
             best_buy = stock.order_book.best_buy()
             best_sell = stock.order_book.best_sell()
@@ -46,12 +52,13 @@ class MatchingEngine:
             
             best_buy.quantity -= trade_quantity
             best_sell.quantity -= trade_quantity
-            
             if best_buy.quantity == 0:
                 stock.order_book.remove_order(best_buy.order_id)
             if best_sell.quantity == 0:
                 stock.order_book.remove_order(best_sell.order_id)
             
             stock.price = trade_price
-            return Trade(stock.symbol, trade_price, trade_quantity)
+            trades.append(Trade(order.symbol, trade_price, trade_quantity, best_buy.order_id, best_sell.order_id, datetime.now()))
+        
+        return trades
 

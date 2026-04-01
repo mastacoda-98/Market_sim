@@ -2,11 +2,11 @@
 name = "backend"
 version = "0.1.0"
 description = ""
-authors = ["gurpreet <gurp3773@gmail.com>"]
-readme = "README.md"
-
+package-mode = false  # ← Add this line
 [tool.poetry.dependencies]
 python = "^3.12"
+pydantic = "^2.12.5"
+fastapi = "^0.135.3"
 
 
 [build-system]
