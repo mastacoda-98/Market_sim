@@ -1,4 +1,4 @@
-from backend.order_book.order_book import OrderBook
+from order_book.order_book import OrderBook
 from typing import Optional, List
 from datetime import datetime
 
@@ -61,4 +61,7 @@ class MatchingEngine:
             trades.append(Trade(order.symbol, trade_price, trade_quantity, best_buy.order_id, best_sell.order_id, datetime.now()))
         
         return trades
+
+# Singleton instance
+engine = MatchingEngine()
 

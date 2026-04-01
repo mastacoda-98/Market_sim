@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from pydantic import BaseModel
 from typing import Optional, List
-from backend.order_book.order_book import OrderSide
+from order_book.order_book import OrderSide
 
 class OrderRequest(BaseModel):
     symbol: str

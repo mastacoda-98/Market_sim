@@ -1,15 +1,15 @@
-from backend.order_book.order_book import OrderBook
+from order_book.order_book import OrderBook
 import uuid
 import datetime
 from typing import Optional, List
-import backend.matching_engine.matching_engine as MatchingEngine
-from backend.pydantic_schemas.orders import OrderRequest, TradeResponse, OrderResponse
-from backend.pydantic_schemas.stock import StockResponse
+from matching_engine.matching_engine import engine
+from pydantic_schemas.orders import OrderRequest, TradeResponse, OrderResponse
+from pydantic_schemas.stock import StockResponse
 from fastapi import APIRouter, HTTPException
-from backend.order_book.order_book import Order, OrderSide
+from order_book.order_book import Order, OrderSide
 
 def findOrderById(order_id: str) -> Optional[OrderResponse]:
-    for stock in MatchingEngine.stocks.values():
+    for stock in engine.stocks.values():
         if order_id in stock.order_book.orders:
             order = stock.order_book.orders[order_id]
             return OrderResponse(
@@ -23,8 +23,8 @@ def findOrderById(order_id: str) -> Optional[OrderResponse]:
     
     return None
 
-async def makeOrder(order: Order) -> OrderResponse:
-    trades = await MatchingEngine.MatchingEngine().process_order(order)
+async def makeOrder(order: Order) -> tuple:
+    trades = await engine.process_order(order)
     
     if trades is None:
         trades = []
@@ -40,7 +40,7 @@ async def makeOrder(order: Order) -> OrderResponse:
             sell_order_id=trade.sell_order_id
         ))
     
-    return OrderResponse(
+    order_response = OrderResponse(
         order_id=order.order_id,
         symbol=order.symbol,
         side=order.side,
@@ -48,10 +48,12 @@ async def makeOrder(order: Order) -> OrderResponse:
         quantity=order.quantity,
         timestamp=order.timestamp
     )
+    
+    return order_response, trade_responses
 
 
 def findStockBySymbol(symbol: str) -> Optional[StockResponse]:
-    for stock in MatchingEngine.stocks.values():
+    for stock in engine.stocks.values():
         if stock.symbol == symbol:
             return StockResponse(
                 stock_id=stock.stock_id,
