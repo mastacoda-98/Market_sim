@@ -19,7 +19,12 @@ class Stock:
         self.day_low = price
         self.tq = 0.0
         self.q = 0.0
-        self.cur_minute = type(datetime.now()).now()
+        self.cur_minute = datetime.now()
+        
+    def getVWAP(self) -> float:
+        if self.q == 0:
+            return self.price
+        return self.tq / self.q
         
     
 stocks = {
@@ -75,7 +80,13 @@ class MatchingEngine:
                 stock.trades.append(trade)
                 stock.day_high = max(stock.day_high, trade_price)
                 stock.day_low = min(stock.day_low, trade_price)
-                stock.cur_minute = datetime.now()
+                
+                now_min = datetime.now().replace(second=0, microsecond=0)
+                if stock.cur_minute != now_min:
+                    stock.cur_minute = now_min
+                    stock.q = 0.0
+                    stock.tq = 0.0
+                
                 stock.q += trade_quantity
                 stock.tq += trade_quantity * trade_price
             

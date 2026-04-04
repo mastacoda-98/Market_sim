@@ -13,6 +13,10 @@ asyncpg = "^0.31.0"
 sqlalchemy = "^2.0.48"
 dotenv = "^0.9.9"
 python-dotenv = "^1.2.2"
+bcrypt = "^5.0.0"
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+jwt = "^1.4.0"
+python-jose = "^3.5.0"
 
 
 [build-system]

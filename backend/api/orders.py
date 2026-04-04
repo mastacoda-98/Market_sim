@@ -47,7 +47,7 @@ async def get_stocks():
     return [{"symbol": stock.symbol, "price": stock.price} for stock in engine.stocks.values()]
 
 
-@router.get("/stock/{symbol}")
+@router.get("/stocks/{symbol}")
 async def get_stock(symbol: str):
     stock_response = findStockBySymbol(symbol)
     if stock_response is not None:
