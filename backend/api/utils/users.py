@@ -78,3 +78,38 @@ async def get_user_by_email(email: str, db: AsyncSession) -> Optional[UserRespon
             updated_at=row["updated_at"]
         )
     return None
+
+async def get_user_by_id(user_id: str, db: AsyncSession) -> Optional[UserResponse]:
+    result = await db.execute(
+        text("""
+            SELECT id, first_name, last_name, email, credits, created_at, updated_at
+            FROM users
+            WHERE id = :user_id
+        """),
+        {"user_id": int(user_id)}
+    )
+    row = result.mappings().fetchone()
+    if row:
+        return UserResponse(
+            user_id=str(row["id"]),
+            first_name=row["first_name"],
+            last_name=row["last_name"],
+            email=row["email"],
+            credits=row["credits"],
+            created_at=row["created_at"],
+            updated_at=row["updated_at"]
+        )
+    return None
+
+
+async def get_user_password_hash(email: str, db: AsyncSession) -> Optional[str]:
+    result = await db.execute(
+        text("""
+            SELECT password_hash
+            FROM users
+            WHERE email = :email
+        """),
+        {"email": email}
+    )
+    row = result.mappings().fetchone()
+    return row["password_hash"] if row else None
