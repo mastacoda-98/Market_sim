@@ -13,6 +13,9 @@ class UserCreateRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+class AddCreditsRequest(BaseModel):
+    amount: float
     
 class UserResponse(BaseModel):
     user_id: str

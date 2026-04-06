@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Response
 from pydantic_schemas.orders import OrderRequest, TradeResponse, OrderResponse
 from pydantic_schemas.stock import StockResponse
-from pydantic_schemas.user import UserCreateRequest, UserResponse, LoginRequest
+from pydantic_schemas.user import UserCreateRequest, UserResponse, LoginRequest, AddCreditsRequest
 from matching_engine.matching_engine import engine, Trade
 from order_book.order_book import Order, OrderSide
 from api.utils.users import get_user_password_hash
@@ -58,3 +58,19 @@ async def login(login_req: LoginRequest, db: AsyncSession = Depends(get_db)):
 @router.get("/me")
 async def read_current_user(current_user: UserResponse = Depends(get_current_user)):
     return current_user
+
+@router.post("/me/credits/add")
+async def add_credits(credits_req: AddCreditsRequest, current_user: UserResponse = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    from sqlalchemy import text
+    
+    if credits_req.amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be greater than 0")
+    
+    await db.execute(
+        text("UPDATE users SET credits = credits + :amount WHERE email = :email"),
+        {"amount": credits_req.amount, "email": current_user.email}
+    )
+    await db.commit()
+    
+    user = await get_user_by_email(current_user.email, db)
+    return user

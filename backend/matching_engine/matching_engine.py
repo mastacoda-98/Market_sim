@@ -35,12 +35,16 @@ stocks = {
 }
 
 class Trade: 
-    def __init__(self, symbol: str, price: float, quantity: float, buy_order_id: str, sell_order_id: str, timestamp):
+    def __init__(self, symbol: str, price: float, quantity: float, 
+                 buy_order_id: str, sell_order_id: str, 
+                 buyer_user_id: str, seller_user_id: str, timestamp):
         self.symbol = symbol
         self.price = price
         self.quantity = quantity
         self.buy_order_id = buy_order_id
-        self.sell_order_id = sell_order_id 
+        self.sell_order_id = sell_order_id
+        self.buyer_user_id = buyer_user_id
+        self.seller_user_id = seller_user_id
         self.timestamp = timestamp
 
 class MatchingEngine:
@@ -67,6 +71,9 @@ class MatchingEngine:
                 trade_price = best_sell.price
                 trade_quantity = min(best_buy.quantity, best_sell.quantity)
                 
+                buyer_user_id = best_buy.order_by
+                seller_user_id = best_sell.order_by
+                
                 best_buy.quantity -= trade_quantity
                 best_sell.quantity -= trade_quantity
                 if best_buy.quantity == 0:
@@ -75,7 +82,7 @@ class MatchingEngine:
                     stock.order_book.remove_order(best_sell.order_id)
                 
                 stock.price = trade_price
-                trade = Trade(order.symbol, trade_price, trade_quantity, best_buy.order_id, best_sell.order_id, datetime.now())
+                trade = Trade(order.symbol, trade_price, trade_quantity, best_buy.order_id, best_sell.order_id, buyer_user_id, seller_user_id, datetime.now())
                 trades.append(trade)
                 stock.trades.append(trade)
                 stock.day_high = max(stock.day_high, trade_price)
