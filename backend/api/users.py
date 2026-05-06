@@ -54,6 +54,12 @@ async def login(login_req: LoginRequest, db: AsyncSession = Depends(get_db)):
     response.set_cookie(key="access_token", value=access_token, httponly=True)
     return response
 
+@router.post("/logout")
+async def logout():
+    response = Response(content='{"message":"Logged out successfully"}', media_type="application/json")
+    response.delete_cookie(key="access_token")
+    return response
+
 
 @router.get("/me")
 async def read_current_user(current_user: UserResponse = Depends(get_current_user)):

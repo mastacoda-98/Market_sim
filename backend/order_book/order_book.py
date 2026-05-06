@@ -15,6 +15,7 @@ class Order:
     side: OrderSide
     price: float
     quantity: float
+    order_by: str
     timestamp: datetime = datetime.now()
 
 class OrderBook:
