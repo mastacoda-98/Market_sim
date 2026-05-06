@@ -39,40 +39,36 @@ class OrderBook:
         heapq.heappush(self.sell_heap, (order.price, order.timestamp, order.order_id))
         self.orders[order.order_id] = order
     
-    def best_buy(self) -> Optional[Order]:
-        if not self.buy_heap:
-            return None
-        while self.buy_heap:
-            id = self.buy_heap[0][2]
-            if id in self.orders:
-                return self.orders[id]
-            heapq.heappop(self.buy_heap)
-            
+    def _remove_from_heap(self, heap: list, order_id: str):
+        heap[:] = [item for item in heap if item[2] != order_id]
+        heapq.heapify(heap)
+    
+    def peek_best_buy(self) -> Optional[Order]:
+        if self.buy_heap and self.buy_heap[0][2] in self.orders:
+            return self.orders[self.buy_heap[0][2]]
         return None
     
-    def best_sell(self) -> Optional[Order]:
-        if not self.sell_heap:
-            return None
-        
-        while self.sell_heap:
-            id = self.sell_heap[0][2]
-            if id in self.orders:
-                return self.orders[id]
-            heapq.heappop(self.sell_heap)
-            
+    def peek_best_sell(self) -> Optional[Order]:
+        if self.sell_heap and self.sell_heap[0][2] in self.orders:
+            return self.orders[self.sell_heap[0][2]]
         return None
+    
+    def can_match(self) -> bool:
+        best_buy = self.peek_best_buy()
+        best_sell = self.peek_best_sell()
+        return best_buy is not None and best_sell is not None and best_buy.price >= best_sell.price
     
     def remove_order(self, id: str):
         if id in self.orders:
+            order = self.orders[id]
+            if order.side == OrderSide.BUY:
+                self._remove_from_heap(self.buy_heap, id)
+            else:
+                self._remove_from_heap(self.sell_heap, id)
             del self.orders[id]
     
     def get_expired_orders(self) -> list:
         return [order for order in self.orders.values() if order.is_expired()]
-    
-    def can_match(self) -> Optional[bool]:
-        best_buy = self.best_buy()
-        best_sell = self.best_sell()
-        return best_buy and best_sell and best_buy.price >= best_sell.price
     
     def get_bids(self, limit: int = 10) -> list:
         bids = []

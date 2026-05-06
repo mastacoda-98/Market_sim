@@ -1,4 +1,4 @@
-from order_book.order_book import OrderBook
+from order_book.order_book import OrderBook, OrderSide
 from typing import Optional, List
 from datetime import datetime
 import asyncio
@@ -55,15 +55,15 @@ class MatchingEngine:
     async def process_order(self, order) -> Optional[List[Trade]]:
         async with self.lock:
             stock = self.stocks[order.symbol]
-            if order.side == "BUY":
+            if order.side == OrderSide.BUY:
                 stock.order_book.add_buy_order(order)
             else:
                 stock.order_book.add_sell_order(order)
             
             trades = []
             while stock.order_book.can_match():
-                best_buy = stock.order_book.best_buy()
-                best_sell = stock.order_book.best_sell()
+                best_buy = stock.order_book.peek_best_buy()
+                best_sell = stock.order_book.peek_best_sell()
                 
                 if best_buy is None or best_sell is None:
                     break

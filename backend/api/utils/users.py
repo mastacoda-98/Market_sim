@@ -173,7 +173,7 @@ async def add_stocks_to_user(user_id: int, symbol: str, quantity: float, db: Asy
             INSERT INTO user_portfolio (user_id, stock_symbol, quantity, average_buy_price, total_invested)
             VALUES (:user_id, :symbol, :qty, 0, 0)
             ON CONFLICT (user_id, stock_symbol) DO UPDATE
-            SET quantity = quantity + :qty
+            SET quantity = user_portfolio.quantity + :qty
         """),
         {"user_id": user_id, "symbol": symbol, "qty": quantity}
     )

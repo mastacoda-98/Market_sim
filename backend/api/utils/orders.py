@@ -25,7 +25,7 @@ async def validate_seller_balance(user_id: int, symbol: str, quantity: float, db
     stock = engine.stocks.get(symbol)
     if stock:
         for order_id, order in stock.order_book.orders.items():
-            if order.order_by == str(user_id) and order.symbol == symbol and order.side == "SELL":
+            if order.order_by == str(user_id) and order.symbol == symbol and order.side == OrderSide.SELL:
                 pending_quantity += order.quantity
     
     total_sell_quantity = pending_quantity + quantity
@@ -75,7 +75,7 @@ async def cancel_order(order_id: str, user_id: int, db) -> dict:
     remaining_quantity = order.quantity
     order_price = order.price
     
-    if order.side == "BUY" or order.side == OrderSide.BUY:
+    if order.side == OrderSide.BUY or order.side == "BUY":
         credit_refund = remaining_quantity * order_price
         await db.execute(
             text("UPDATE users SET credits = credits + :amount WHERE id = :user_id"),
@@ -116,11 +116,10 @@ async def cleanup_expired_orders(symbol: str, db):
 
 async def cleanup_old_trades(db, days: int = 3) -> int:
     result = await db.execute(
-        text("""
+        text(f"""
             DELETE FROM trade_history 
-            WHERE timestamp < NOW() - INTERVAL ':days days'
-        """),
-        {"days": days}
+            WHERE timestamp < NOW() - INTERVAL '{days} days'
+        """)
     )
     await db.commit()
     return result.rowcount
@@ -138,7 +137,7 @@ async def save_trades_to_db(trades: List[Trade], db):
                 """
             ),
             {
-                "user_id": trade.buyer_user_id,
+                "user_id": int(trade.buyer_user_id),
                 "side": "BUY",
                 "symbol": trade.symbol,
                 "price": trade.price,
@@ -155,7 +154,7 @@ async def save_trades_to_db(trades: List[Trade], db):
                 """
             ),
             {
-                "user_id": trade.seller_user_id,
+                "user_id": int(trade.seller_user_id),
                 "side": "SELL",
                 "symbol": trade.symbol,
                 "price": trade.price,
@@ -169,8 +168,8 @@ async def update_user_portfolios(trades: List[Trade], db):
         return
     
     for trade in trades:
-        buyer_id = trade.buyer_user_id
-        seller_id = trade.seller_user_id
+        buyer_id = int(trade.buyer_user_id)
+        seller_id = int(trade.seller_user_id)
         symbol = trade.symbol
         price = trade.price
         quantity = trade.quantity
@@ -185,11 +184,11 @@ async def update_user_portfolios(trades: List[Trade], db):
         existing_buyer = result.fetchone()
         
         if existing_buyer:
-            avg_price = existing_buyer[3]
-            old_qty = existing_buyer[2]
+            avg_price = float(existing_buyer[4])
+            old_qty = float(existing_buyer[3])
             new_qty = old_qty + quantity
             new_avg_price = avg_price if new_qty == 0 else ((avg_price * old_qty) + total_cost) / new_qty
-            new_invested = existing_buyer[4] + total_cost
+            new_invested = float(existing_buyer[5]) + total_cost
             
             await db.execute(
                 text(
@@ -266,7 +265,10 @@ def findOrderById(order_id: str) -> Optional[OrderResponse]:
 
 async def makeOrder(order: Order, db) -> OrderResponse:
     try:
-        await cleanup_expired_orders(order.symbol, db)
+        try:
+            await cleanup_expired_orders(order.symbol, db)
+        except Exception:
+            pass
         
         trades = await engine.process_order(order)
         
@@ -274,7 +276,7 @@ async def makeOrder(order: Order, db) -> OrderResponse:
             trades = []
         
         filled_quantity = sum(trade.quantity for trade in trades)
-        pending_quantity = order.quantity - filled_quantity
+        pending_quantity = order.quantity or 0
         
         if pending_quantity == 0:
             status = OrderStatus.FILLED
@@ -304,6 +306,9 @@ async def makeOrder(order: Order, db) -> OrderResponse:
         
         return order_response
     except Exception as e:
+        print(f"DEBUG: Exception in makeOrder: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Order processing failed: {str(e)}")
 
@@ -320,3 +325,52 @@ def findStockBySymbol(symbol: str) -> Optional[StockResponse]:
             )
     
     return None
+
+def get_user_pending_orders(user_id: int) -> list:
+    orders = []
+    
+    for stock in engine.stocks.values():
+        for order_id, order in stock.order_book.orders.items():
+            if int(order.order_by) == user_id:
+                orders.append({
+                    "order_id": order.order_id,
+                    "symbol": order.symbol,
+                    "side": str(order.side.value),
+                    "price": order.price,
+                    "quantity": order.quantity,
+                    "timestamp": order.timestamp.isoformat(),
+                    "expires_at": order.expires_at.isoformat()
+                })
+    
+    return orders
+
+def get_orderbook_snapshot(symbol: str) -> Optional[dict]:
+    stock = engine.stocks.get(symbol)
+    if not stock:
+        return None 
+    
+    buy_orders = []
+    sell_orders = []
+    
+    for order_id, order in stock.order_book.orders.items():
+        if not order.is_expired():
+            order_data = {
+                "order_id": order.order_id,
+                "price": order.price,
+                "quantity": order.quantity,
+                "timestamp": order.timestamp.isoformat()
+            }
+            if order.side == "BUY" or order.side == OrderSide.BUY:
+                buy_orders.append(order_data)
+            else:
+                sell_orders.append(order_data)
+    
+    buy_orders.sort(key=lambda x: x["price"], reverse=True)
+    sell_orders.sort(key=lambda x: x["price"])
+    
+    return {
+        "symbol": symbol,
+        "current_price": stock.price,
+        "buy_orders": buy_orders[:20],
+        "sell_orders": sell_orders[:20]
+    }

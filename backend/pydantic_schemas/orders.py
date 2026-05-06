@@ -14,7 +14,6 @@ class OrderRequest(BaseModel):
     side: OrderSide
     price: float
     quantity: float
-    order_by: str
 
 class TradeResponse(BaseModel):
     symbol: str

@@ -1,18 +1,25 @@
 from fastapi import APIRouter, HTTPException, Depends, Response
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+from pydantic import BaseModel
 from pydantic_schemas.orders import OrderRequest, TradeResponse, OrderResponse
 from pydantic_schemas.stock import StockResponse
 from pydantic_schemas.user import UserCreateRequest, UserResponse, LoginRequest, AddCreditsRequest
 from matching_engine.matching_engine import engine, Trade
 from order_book.order_book import Order, OrderSide
-from api.utils.users import get_user_password_hash, get_user_portfolio, get_user_trades
+from api.utils.users import get_user_password_hash, get_user_portfolio, get_user_trades, add_stocks_to_user
 from api.utils.orders import findOrderById, findStockBySymbol, makeOrder
 from api.utils.users import create_new_user, get_user_by_email, get_user_by_id, hash_password
 from api.websockets import manager
 from db.db_connect import get_db
 from auth.utils import create_access_token
 from auth.dependencies import get_current_user
+
+
+class AddStockRequest(BaseModel):
+    user_id: int
+    symbol: str
+    quantity: float
 
 
 router = APIRouter()
@@ -89,3 +96,8 @@ async def get_portfolio(current_user: UserResponse = Depends(get_current_user), 
 async def get_trades(current_user: UserResponse = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     trades = await get_user_trades(int(current_user.user_id), db)
     return {"trades": trades}
+
+@router.post("/admin/stocks/add")
+async def add_stock_to_user(stock_req: AddStockRequest, db: AsyncSession = Depends(get_db)):
+    result = await add_stocks_to_user(stock_req.user_id, stock_req.symbol, stock_req.quantity, db)
+    return result
