@@ -113,3 +113,70 @@ async def get_user_password_hash(email: str, db: AsyncSession) -> Optional[str]:
     )
     row = result.mappings().fetchone()
     return row["password_hash"] if row else None
+
+
+async def get_user_portfolio(user_id: int, db: AsyncSession) -> list:
+    result = await db.execute(
+        text("""
+            SELECT stock_symbol, quantity, average_buy_price, total_invested, updated_at 
+            FROM user_portfolio 
+            WHERE user_id = :user_id
+            ORDER BY updated_at DESC
+        """),
+        {"user_id": user_id}
+    )
+    
+    rows = result.fetchall()
+    portfolio = []
+    for row in rows:
+        portfolio.append({
+            "symbol": row[0],
+            "quantity": row[1],
+            "average_buy_price": row[2],
+            "total_invested": row[3],
+            "updated_at": row[4]
+        })
+    
+    return portfolio
+
+
+async def get_user_trades(user_id: int, db: AsyncSession) -> list:
+    result = await db.execute(
+        text("""
+            SELECT id, side, symbol, price, quantity, timestamp 
+            FROM trade_history 
+            WHERE user_id = :user_id
+            ORDER BY timestamp DESC
+            LIMIT 100
+        """),
+        {"user_id": user_id}
+    )
+    
+    rows = result.fetchall()
+    trades = []
+    for row in rows:
+        trades.append({
+            "trade_id": row[0],
+            "side": row[1],
+            "symbol": row[2],
+            "price": row[3],
+            "quantity": row[4],
+            "timestamp": row[5]
+        })
+    
+    return trades
+
+
+async def add_stocks_to_user(user_id: int, symbol: str, quantity: float, db: AsyncSession):
+    await db.execute(
+        text("""
+            INSERT INTO user_portfolio (user_id, stock_symbol, quantity, average_buy_price, total_invested)
+            VALUES (:user_id, :symbol, :qty, 0, 0)
+            ON CONFLICT (user_id, stock_symbol) DO UPDATE
+            SET quantity = quantity + :qty
+        """),
+        {"user_id": user_id, "symbol": symbol, "qty": quantity}
+    )
+    await db.commit()
+    
+    return {"user_id": user_id, "symbol": symbol, "quantity": quantity}

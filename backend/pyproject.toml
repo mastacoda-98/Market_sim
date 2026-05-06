@@ -17,6 +17,7 @@ bcrypt = "^5.0.0"
 passlib = {extras = ["bcrypt"], version = "^1.7.4"}
 jwt = "^1.4.0"
 python-jose = "^3.5.0"
+apscheduler = "^3.11.2"
 
 
 [build-system]

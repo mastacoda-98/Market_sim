@@ -247,3 +247,31 @@ You only need:
 
 👉 You are building a system that:  
 **takes orders → matches them → generates trades → streams updates live**
+
+GET /stocks/{symbol}/orderbook endpoint - Users can't see bid/ask spreads or pending orders
+
+Shows top 5/10 bids and asks
+Transaction Rollback Safety - If update_user_portfolios() fails after save_trades_to_db(), trades are saved but portfolio not updated
+
+Need: try/except with await db.rollback() in makeOrder()
+🟡 MEDIUM PRIORITY:
+
+Input Validation - No checks for:
+
+Negative prices
+Zero quantity
+Minimum lot size
+Price decimals (use Decimal not float)
+Partial Fill Tracking - When pending order fills later, how do users know? WebSocket order status updates needed
+
+Order Expiration - Orders sit forever. Need: end-of-day cancel or explicit expiry time
+
+Idempotency - If place order request retries, creates duplicate trades
+
+🟢 NICE TO HAVE:
+
+Bids/asks visualization dashboard
+Trading fees/commission
+Audit logs for all transactions
+Rate limiting on endpoints
+Market hours validation

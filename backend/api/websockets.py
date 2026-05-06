@@ -25,14 +25,18 @@ class ConnectionManager:
             self.connections[websocket].discard(symbol.upper())
 
     async def broadcast_to_symbol(self, message: dict, symbol: str):
-        """Broadcast only to clients subscribed to this symbol"""
         symbol = symbol.upper()
+        dead = []
+
         for connection, subscribed_symbols in self.connections.items():
             if symbol in subscribed_symbols:
                 try:
                     await connection.send_json(message)
-                except Exception:
-                    pass
+                except:
+                    dead.append(connection)
+
+        for d in dead:
+            self.disconnect(d)
 
 manager = ConnectionManager()
 

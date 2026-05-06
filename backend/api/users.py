@@ -1,15 +1,16 @@
 from fastapi import APIRouter, HTTPException, Depends, Response
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic_schemas.orders import OrderRequest, TradeResponse, OrderResponse
 from pydantic_schemas.stock import StockResponse
 from pydantic_schemas.user import UserCreateRequest, UserResponse, LoginRequest, AddCreditsRequest
 from matching_engine.matching_engine import engine, Trade
 from order_book.order_book import Order, OrderSide
-from api.utils.users import get_user_password_hash
+from api.utils.users import get_user_password_hash, get_user_portfolio, get_user_trades
 from api.utils.orders import findOrderById, findStockBySymbol, makeOrder
 from api.utils.users import create_new_user, get_user_by_email, get_user_by_id, hash_password
 from api.websockets import manager
 from db.db_connect import get_db
-from sqlalchemy.ext.asyncio import AsyncSession
 from auth.utils import create_access_token
 from auth.dependencies import get_current_user
 
@@ -67,8 +68,6 @@ async def read_current_user(current_user: UserResponse = Depends(get_current_use
 
 @router.post("/me/credits/add")
 async def add_credits(credits_req: AddCreditsRequest, current_user: UserResponse = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    from sqlalchemy import text
-    
     if credits_req.amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be greater than 0")
     
@@ -80,3 +79,13 @@ async def add_credits(credits_req: AddCreditsRequest, current_user: UserResponse
     
     user = await get_user_by_email(current_user.email, db)
     return user
+
+@router.get("/me/portfolio")
+async def get_portfolio(current_user: UserResponse = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    portfolio = await get_user_portfolio(int(current_user.user_id), db)
+    return {"portfolio": portfolio}
+
+@router.get("/me/trades")
+async def get_trades(current_user: UserResponse = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    trades = await get_user_trades(int(current_user.user_id), db)
+    return {"trades": trades}

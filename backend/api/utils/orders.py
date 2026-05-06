@@ -101,6 +101,30 @@ async def cancel_order(order_id: str, user_id: int, db) -> dict:
         "message": "Order cancelled successfully"
     }
 
+async def cleanup_expired_orders(symbol: str, db):
+    stock = engine.stocks.get(symbol)
+    if not stock:
+        return
+    
+    expired_orders = stock.order_book.get_expired_orders()
+    
+    for order in expired_orders:
+        try:
+            await cancel_order(order.order_id, int(order.order_by), db)
+        except Exception:
+            pass
+
+async def cleanup_old_trades(db, days: int = 3) -> int:
+    result = await db.execute(
+        text("""
+            DELETE FROM trade_history 
+            WHERE timestamp < NOW() - INTERVAL ':days days'
+        """),
+        {"days": days}
+    )
+    await db.commit()
+    return result.rowcount
+
 async def save_trades_to_db(trades: List[Trade], db):
     if not trades:
         return
@@ -201,8 +225,6 @@ async def update_user_portfolios(trades: List[Trade], db):
             text("UPDATE users SET credits = credits + :earnings WHERE id = :user_id"),
             {"earnings": total_cost, "user_id": seller_id}
         )
-    
-    await db.commit()
 
 async def broadcast_trades_websocket(trades: List[Trade]):
     if not trades:
@@ -243,41 +265,47 @@ def findOrderById(order_id: str) -> Optional[OrderResponse]:
     return None
 
 async def makeOrder(order: Order, db) -> OrderResponse:
-    trades = await engine.process_order(order)
-    
-    if trades is None:
-        trades = []
-    
-    filled_quantity = sum(trade.quantity for trade in trades)
-    pending_quantity = order.quantity - filled_quantity
-    
-    if pending_quantity == 0:
-        status = OrderStatus.FILLED
-    elif filled_quantity == 0:
-        status = OrderStatus.PENDING
-    else:
-        status = OrderStatus.PARTIAL
-    
-    await save_trades_to_db(trades, db)
-    
-    await update_user_portfolios(trades, db)
-    
-    await broadcast_trades_websocket(trades)
-
-    order_response = OrderResponse(
-        order_id=order.order_id,
-        symbol=order.symbol,
-        side=order.side,
-        price=order.price,
-        quantity=order.quantity,
-        filled_quantity=filled_quantity,
-        pending_quantity=pending_quantity,
-        status=status,
-        timestamp=order.timestamp,
-        order_by=order.order_by
-    )
-    
-    return order_response
+    try:
+        await cleanup_expired_orders(order.symbol, db)
+        
+        trades = await engine.process_order(order)
+        
+        if trades is None:
+            trades = []
+        
+        filled_quantity = sum(trade.quantity for trade in trades)
+        pending_quantity = order.quantity - filled_quantity
+        
+        if pending_quantity == 0:
+            status = OrderStatus.FILLED
+        elif filled_quantity == 0:
+            status = OrderStatus.PENDING
+        else:
+            status = OrderStatus.PARTIAL
+        
+        await save_trades_to_db(trades, db)
+        await update_user_portfolios(trades, db)
+        await db.commit()
+        
+        await broadcast_trades_websocket(trades)
+        
+        order_response = OrderResponse(
+            order_id=order.order_id,
+            symbol=order.symbol,
+            side=order.side,
+            price=order.price,
+            quantity=order.quantity,
+            filled_quantity=filled_quantity,
+            pending_quantity=pending_quantity,
+            status=status,
+            timestamp=order.timestamp,
+            order_by=order.order_by
+        )
+        
+        return order_response
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Order processing failed: {str(e)}")
 
 
 def findStockBySymbol(symbol: str) -> Optional[StockResponse]:
