@@ -32,16 +32,28 @@ async def validate_seller_balance(user_id: int, symbol: str, quantity: float, db
     if total_sell_quantity > portfolio_quantity:
         return False
     
+    await db.execute(
+        text("UPDATE user_portfolio SET quantity = quantity - :qty WHERE user_id = :user_id AND stock_symbol = :symbol"),
+        {"user_id": user_id, "symbol": symbol, "qty": quantity}
+    )
+    
     return True
 
 async def validate_buyer_balance(user_id: int, price: float, quantity: float, db) -> bool:
+    cost = price * quantity
     result = await db.execute(
         text("SELECT credits FROM users WHERE id = :user_id FOR UPDATE"),
         {"user_id": user_id}
     )
     row = result.fetchone()
-    if row is None or row[0] < (price * quantity):
+    if row is None or row[0] < cost:
         return False
+    
+    await db.execute(
+        text("UPDATE users SET credits = credits - :amount WHERE id = :user_id"),
+        {"user_id": user_id, "amount": cost}
+    )
+    
     return True
 
 async def cancel_order(order_id: str, user_id: int, db) -> dict:
@@ -68,6 +80,11 @@ async def cancel_order(order_id: str, user_id: int, db) -> dict:
         await db.execute(
             text("UPDATE users SET credits = credits + :amount WHERE id = :user_id"),
             {"amount": credit_refund, "user_id": user_id}
+        )
+    else:
+        await db.execute(
+            text("UPDATE user_portfolio SET quantity = quantity + :qty WHERE user_id = :user_id AND stock_symbol = :symbol"),
+            {"user_id": user_id, "symbol": stock_symbol, "qty": remaining_quantity}
         )
     
     if stock_symbol:
@@ -178,24 +195,7 @@ async def update_user_portfolios(trades: List[Trade], db):
                     "invested": total_cost
                 }
             )
-        
-        await db.execute(
-            text("UPDATE users SET credits = credits - :cost WHERE id = :user_id"),
-            {"cost": total_cost, "user_id": buyer_id}
-        )
-        
-        await db.execute(
-            text(
-                """UPDATE user_portfolio 
-                   SET quantity = quantity - :qty, updated_at = NOW()
-                   WHERE user_id = :user_id AND stock_symbol = :symbol"""
-            ),
-            {
-                "qty": quantity,
-                "user_id": seller_id,
-                "symbol": symbol
-            }
-        )
+
         
         await db.execute(
             text("UPDATE users SET credits = credits + :earnings WHERE id = :user_id"),
@@ -243,11 +243,6 @@ def findOrderById(order_id: str) -> Optional[OrderResponse]:
     return None
 
 async def makeOrder(order: Order, db) -> OrderResponse:
-    if order.side == "BUY" or order.side == OrderSide.BUY:
-        is_valid = await validate_buyer_balance(int(order.order_by), order.price, order.quantity, db)
-        if not is_valid:
-            raise HTTPException(status_code=400, detail="Insufficient credits to place buy order")
-    
     trades = await engine.process_order(order)
     
     if trades is None:
