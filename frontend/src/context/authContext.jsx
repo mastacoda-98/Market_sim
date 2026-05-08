@@ -7,18 +7,19 @@ const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(undefined);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
+      setLoading(true);
       try {
         const res = await api.get("/api/me");
 
         setUser(res.data);
         setIsLoggedIn(true);
       } catch {
-        setUser(null);
+        setUser(undefined);
         setIsLoggedIn(false);
       } finally {
         setLoading(false);

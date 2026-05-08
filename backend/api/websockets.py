@@ -1,61 +1,62 @@
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
-from typing import Set, Dict
-import json
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from typing import Dict, Set
 
 router = APIRouter()
 
+
 class ConnectionManager:
     def __init__(self):
-        self.connections: Dict[WebSocket, Set[str]] = {}
-    
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self.connections[websocket] = set()
-    
-    def disconnect(self, websocket: WebSocket):
-        if websocket in self.connections:
-            del self.connections[websocket]
-    
-    def subscribe(self, websocket: WebSocket, symbol: str):
-        if websocket in self.connections:
-            self.connections[websocket].add(symbol.upper())
-    
-    def unsubscribe(self, websocket: WebSocket, symbol: str):
-        if websocket in self.connections:
-            self.connections[websocket].discard(symbol.upper())
+        # symbol -> set of connections
+        self.connections: Dict[str, Set[WebSocket]] = {}
 
-    async def broadcast_to_symbol(self, message: dict, symbol: str):
+    async def connect(self, symbol: str, websocket: WebSocket):
         symbol = symbol.upper()
+
+        if symbol not in self.connections:
+            self.connections[symbol] = set()
+
+        self.connections[symbol].add(websocket)
+
+    def disconnect(self, symbol: str, websocket: WebSocket):
+        symbol = symbol.upper()
+
+        if symbol in self.connections:
+            self.connections[symbol].discard(websocket)
+
+            if not self.connections[symbol]:
+                del self.connections[symbol]
+
+    async def broadcast(self, symbol: str, message: dict):
+        symbol = symbol.upper()
+
+        if symbol not in self.connections:
+            return
+
         dead = []
 
-        for connection, subscribed_symbols in self.connections.items():
-            if symbol in subscribed_symbols:
-                try:
-                    await connection.send_json(message)
-                except:
-                    dead.append(connection)
+        for ws in self.connections[symbol]:
+            try:
+                await ws.send_json(message)
+            except:
+                dead.append(ws)
 
-        for d in dead:
-            self.disconnect(d)
+        for ws in dead:
+            self.disconnect(symbol, ws)
+
 
 manager = ConnectionManager()
 
-@router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
+
+@router.websocket("/ws/{symbol}")
+async def websocket_endpoint(websocket: WebSocket, symbol: str):
+    await websocket.accept()
+
+    await manager.connect(symbol, websocket)
+
     try:
         while True:
-            data = await websocket.receive_text()
-            message = json.loads(data)
-            
-            action = message.get("action")
-            symbol = message.get("symbol")
-            
-            if action == "subscribe" and symbol:
-                manager.subscribe(websocket, symbol)
-            elif action == "unsubscribe" and symbol:
-                manager.unsubscribe(websocket, symbol)
+            # keep connection alive (optional ping from client)
+            await websocket.receive_text()
+
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
-        
-        
+        manager.disconnect(symbol, websocket)

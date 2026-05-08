@@ -242,7 +242,7 @@ async def broadcast_trades_websocket(trades: List[Trade]):
             "timestamp": trade.timestamp.isoformat() if hasattr(trade.timestamp, 'isoformat') else str(trade.timestamp)
         }
         
-        await manager.broadcast_to_symbol(trade_data, trade.symbol)
+        await manager.broadcast(trade.symbol, trade_data)
 
 def findOrderById(order_id: str) -> Optional[OrderResponse]:
     for stock in engine.stocks.values():
