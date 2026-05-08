@@ -4,9 +4,19 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
+import { formatDecimal } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/authContext";
-import { Table, TableHeader } from "@/components/ui/table";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableRow,
+  TableFooter,
+  TableHead,
+} from "@/components/ui/table";
 
 export default function StockPage() {
   const { symbol } = useParams();
@@ -17,13 +27,31 @@ export default function StockPage() {
   const [error, setError] = useState(null);
   const [lastTrade, setLastTrade] = useState(null);
   const { isLoggedIn } = useAuth();
+  const [orderbook, setOrderbook] = useState(null);
+
+  const [animateTrade, setAnimateTrade] = useState(false);
+
+  useEffect(() => {
+    if (!lastTrade) return;
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setAnimateTrade(true);
+
+    const timeout = setTimeout(() => {
+      setAnimateTrade(false);
+    }, 180);
+
+    return () => clearTimeout(timeout);
+  }, [lastTrade]);
 
   useEffect(() => {
     const fetchStock = async () => {
       try {
         setLoading(true);
         const res = await api.get(`/api/stocks/${symbol}`);
+        const orderbookRes = await api.get(`/api/orderbook/${symbol}`);
         setStock(res.data);
+        setOrderbook(orderbookRes.data);
         setError(null);
       } catch (err) {
         console.error("Somethings wrong: ", err);
@@ -58,6 +86,14 @@ export default function StockPage() {
       }
     };
 
+    ws.onopen = () => {
+      console.log("WS connected");
+    };
+
+    ws.onclose = () => {
+      console.log("WS closed");
+    };
+
     ws.onerror = (err) => console.error("WebSocket error:", err);
 
     return () => ws.close();
@@ -90,6 +126,14 @@ export default function StockPage() {
     );
   }
 
+  const buyOrders = orderbook?.buy_orders
+    ? [...orderbook.buy_orders].sort((a, b) => b.price - a.price)
+    : [];
+
+  const sellOrders = orderbook?.sell_orders
+    ? [...orderbook.sell_orders].sort((a, b) => a.price - b.price)
+    : [];
+
   return (
     <div className="min-h-screen flex bg-gray-50 px-16 py-8">
       <div className="w-105 border-r border-gray-200 px-10 py-8 flex flex-col gap-6">
@@ -103,34 +147,96 @@ export default function StockPage() {
           </div>
 
           <div className="flex gap-2">
-            <Button className="h-8 px-4 text-xs rounded-lg bg-green-200 border-green-600 text-green hover:bg-green-300">
+            <Button className="h-9 px-4 text-xs rounded-lg bg-green-100 text-green-700 hover:bg-green-200 border border-green-300">
               Buy
             </Button>
 
-            <Button className="h-8 px-4 text-xs rounded-lg bg-red-200 border-red-600 text-red hover:bg-red-300">
+            <Button className="h-9 px-4 text-xs rounded-lg bg-red-100 text-red-700 hover:bg-red-200 border border-red-300">
               Sell
             </Button>
           </div>
         </div>
+
         <div className="flex items-center justify-between">
           <div className="text-3xl font-semibold text-gray-900">
-            ₹{stock.price}
+            ₹{formatDecimal(stock.price)}
           </div>
+
           {lastTrade && (
             <div
-              className={`text-sm font-medium ${
-                lastTrade.direction === "up" ? "text-green-600" : "text-red-500"
-              }`}
+              key={`${lastTrade.price}-${lastTrade.quantity}`}
+              className={`
+      text-sm font-medium transition-all duration-200
+      ${animateTrade ? "scale-110 opacity-70" : "scale-100 opacity-100"}
+      ${lastTrade.direction === "up" ? "text-green-600" : "text-red-500"}
+    `}
             >
-              {lastTrade.quantity} @ ₹{lastTrade.price}
+              <span className="text-gray-400 mr-1">Last Trade</span>
+              {formatDecimal(lastTrade.quantity)} @ ₹
+              {formatDecimal(lastTrade.price)}
             </div>
           )}
         </div>
-        <Table>
-          <TableHeader className="text-2xl text-purple-700 font-bold">
+
+        <div className="mt-4">
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">
             Orderbook
-          </TableHeader>
-        </Table>
+          </h2>
+
+          <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50 hover:bg-gray-50">
+                  <TableHead className="text-red-600 font-semibold">
+                    Ask Qty
+                  </TableHead>
+
+                  <TableHead className="text-red-600 font-semibold">
+                    Ask Price
+                  </TableHead>
+
+                  <TableHead className="text-green-700 font-semibold">
+                    Bid Price
+                  </TableHead>
+
+                  <TableHead className="text-green-700 font-semibold text-right">
+                    Bid Qty
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+
+              <TableBody>
+                {Array.from({
+                  length: Math.min(
+                    Math.max(buyOrders.length, sellOrders.length),
+                    6,
+                  ),
+                }).map((_, i) => {
+                  const ask = sellOrders?.[i];
+                  const bid = buyOrders?.[i];
+
+                  return (
+                    <TableRow key={i}>
+                      <TableCell>{formatDecimal(ask?.quantity)}</TableCell>
+
+                      <TableCell className="text-red-500 font-medium">
+                        {ask ? `₹${formatDecimal(ask.price)}` : "-"}
+                      </TableCell>
+
+                      <TableCell className="text-green-600 font-medium">
+                        {bid ? `₹${formatDecimal(bid.price)}` : "-"}
+                      </TableCell>
+
+                      <TableCell className="text-right">
+                        {formatDecimal(bid?.quantity)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
       </div>
 
       {/* RIGHT PANEL */}

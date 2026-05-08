@@ -6,7 +6,7 @@ from pydantic_schemas.user import UserResponse
 from matching_engine.matching_engine import engine, Trade
 from order_book.order_book import Order, OrderSide
 import uuid 
-from api.utils.orders import findOrderById, findStockBySymbol, makeOrder, validate_seller_balance, validate_buyer_balance, cancel_order, get_user_pending_orders, get_orderbook_snapshot
+from api.utils.orders import findOrderById, findStockBySymbol, makeOrder, validate_seller_balance, validate_buyer_balance, cancel_order, get_user_pending_orders, get_orderbook_snapshot, get_recent_trades_from_db
 from api.websockets import manager
 from db.db_connect import get_db
 from auth.dependencies import get_current_user
@@ -54,7 +54,7 @@ async def delete_order(order_id: str, current_user: UserResponse = Depends(get_c
 
 @router.get("/stocks")
 async def get_stocks():
-    return [{"symbol": stock.symbol, "price": stock.price} for stock in engine.stocks.values()]
+    return [{"symbol": stock.symbol, "price": round(stock.price, 2)} for stock in engine.stocks.values()]
 
 
 @router.get("/stocks/{symbol}")
@@ -77,3 +77,10 @@ async def get_orderbook_snapshot_endpoint(symbol: str):
         raise HTTPException(status_code=404, detail="Stock not found")
     return snapshot
 
+@router.get("/trades/{symbol}")
+async def get_recent_trades(symbol: str, db = Depends(get_db)):
+    stock = engine.stocks.get(symbol)
+    if not stock:
+        raise HTTPException(status_code=404, detail="Stock not found")
+    recent_trades = await get_recent_trades_from_db(symbol, db)
+    return {"trades": recent_trades}

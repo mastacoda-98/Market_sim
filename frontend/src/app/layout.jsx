@@ -37,17 +37,17 @@ const inter = Inter({
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={`${inter.className}`}>
+      <body className={`${inter.className} h-screen overflow-hidden`}>
         <AuthProvider>
-          <div className="flex flex-col min-h-screen">
+          <div className="flex flex-col h-screen">
             <Navbar />
 
-            <main className="flex-1">
+            <main className="flex-1 overflow-hidden margin-top-16">
               {children}
               <Toaster position="top-center" />
             </main>
 
-            <footer className="border-t border-gray-200 px-6 py-4 text-xs text-gray-500 flex justify-between items-center">
+            <footer className="sticky bottom-0 z-50 bg-white/95 border-t border-gray-200 px-6 py-4 text-xs text-gray-500 flex justify-between items-center backdrop-blur-sm">
               <div>
                 Built by Gurpreet Singh • {}
                 <a

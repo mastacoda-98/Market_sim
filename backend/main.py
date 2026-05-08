@@ -30,10 +30,15 @@ async def lifespan(app: fastapi.FastAPI):
 
 
 app = fastapi.FastAPI(lifespan=lifespan)
+origins = [
+    "http://localhost:3000",
+    "http://192.168.1.5:3000",
+    "https://your-frontend.ngrok-free.app",
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

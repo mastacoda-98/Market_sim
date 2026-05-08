@@ -96,8 +96,8 @@ async def cancel_order(order_id: str, user_id: int, db) -> dict:
         "order_id": order_id,
         "symbol": stock_symbol,
         "side": str(order.side),
-        "price": order_price,
-        "cancelled_quantity": remaining_quantity,
+        "price": round(order_price, 2),
+        "cancelled_quantity": round(remaining_quantity, 2),
         "message": "Order cancelled successfully"
     }
 
@@ -233,8 +233,8 @@ async def broadcast_trades_websocket(trades: List[Trade]):
         trade_data = {
             "action": "trade",
             "symbol": trade.symbol,
-            "price": trade.price,
-            "quantity": trade.quantity,
+            "price": round(trade.price, 2),
+            "quantity": round(trade.quantity, 2),
             "buy_order_id": trade.buy_order_id,
             "sell_order_id": trade.sell_order_id,
             "buyer_user_id": trade.buyer_user_id,
@@ -336,8 +336,8 @@ def get_user_pending_orders(user_id: int) -> list:
                     "order_id": order.order_id,
                     "symbol": order.symbol,
                     "side": str(order.side.value),
-                    "price": order.price,
-                    "quantity": order.quantity,
+                    "price": round(order.price, 2),
+                    "quantity": round(order.quantity, 2),
                     "timestamp": order.timestamp.isoformat(),
                     "expires_at": order.expires_at.isoformat()
                 })
@@ -356,8 +356,8 @@ def get_orderbook_snapshot(symbol: str) -> Optional[dict]:
         if not order.is_expired():
             order_data = {
                 "order_id": order.order_id,
-                "price": order.price,
-                "quantity": order.quantity,
+                "price": round(order.price, 2),
+                "quantity": round(order.quantity, 2),
                 "timestamp": order.timestamp.isoformat()
             }
             if order.side == "BUY" or order.side == OrderSide.BUY:
@@ -370,7 +370,32 @@ def get_orderbook_snapshot(symbol: str) -> Optional[dict]:
     
     return {
         "symbol": symbol,
-        "current_price": stock.price,
+        "current_price": round(stock.price, 2),
         "buy_orders": buy_orders[:20],
         "sell_orders": sell_orders[:20]
     }
+    
+async def get_recent_trades_from_db(symbol: str, db) -> List[TradeResponse]:
+    
+    result = await db.execute(
+        text("""
+            SELECT symbol, price, quantity, timestamp
+            FROM trade_history
+            WHERE symbol = :symbol
+            ORDER BY timestamp DESC
+            LIMIT 20
+        """),
+        {"symbol": symbol}
+    )
+    rows = result.fetchall()
+    trades = []
+    for row in rows:
+        trades.append(TradeResponse(
+            symbol=row[0],
+            price=round(row[1], 2),
+            quantity=round(row[2], 2),
+            timestamp=row[3],
+            buy_order_id="",
+            sell_order_id=""
+        ))
+    return trades

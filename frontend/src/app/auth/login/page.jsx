@@ -75,7 +75,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <div className="hidden lg:flex flex-1 items-center justify-center bg-linear-to-br from-purple-100 via-white to-purple-50 border-r border-gray-200">
-        <div className="max-w-xl px-12">
+        <div className="max-w-xl px-12 -mt-40">
           <h1 className={`${sora.className} text-6xl font-bold tracking-tight`}>
             <span className="text-gray-800">trade</span>
             <span className="text-purple-700">Sim.</span>
@@ -97,7 +97,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center px-6">
+      <div className="flex-1 flex items-center justify-center px-6 -mt-36">
         <Card className="w-full max-w-md border-gray-200 shadow-sm rounded-3xl">
           <CardHeader className="space-y-4">
             <div className="lg:hidden flex justify-center">

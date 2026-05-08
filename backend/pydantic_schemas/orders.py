@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from pydantic import BaseModel
+from pydantic import BaseModel, field_serializer
 from typing import Optional, List
 from order_book.order_book import OrderSide
 
@@ -23,6 +23,10 @@ class TradeResponse(BaseModel):
     buy_order_id: str
     sell_order_id: str
     
+    @field_serializer('price', 'quantity')
+    def serialize_decimals(self, value: float) -> float:
+        return round(value, 2)
+    
 class OrderResponse(BaseModel):
     order_id: str
     symbol: str
@@ -34,6 +38,10 @@ class OrderResponse(BaseModel):
     status: OrderStatus
     timestamp: datetime
     order_by: str
+    
+    @field_serializer('price', 'quantity', 'filled_quantity', 'pending_quantity')
+    def serialize_decimals(self, value: float) -> float:
+        return round(value, 2)
 
     
 

@@ -131,9 +131,9 @@ async def get_user_portfolio(user_id: int, db: AsyncSession) -> list:
     for row in rows:
         portfolio.append({
             "symbol": row[0],
-            "quantity": row[1],
-            "average_buy_price": row[2],
-            "total_invested": row[3],
+            "quantity": round(row[1], 2),
+            "average_buy_price": round(row[2], 2),
+            "total_invested": round(row[3], 2),
             "updated_at": row[4]
         })
     
@@ -159,8 +159,8 @@ async def get_user_trades(user_id: int, db: AsyncSession) -> list:
             "trade_id": row[0],
             "side": row[1],
             "symbol": row[2],
-            "price": row[3],
-            "quantity": row[4],
+            "price": round(row[3], 2),
+            "quantity": round(row[4], 2),
             "timestamp": row[5]
         })
     
@@ -179,4 +179,4 @@ async def add_stocks_to_user(user_id: int, symbol: str, quantity: float, db: Asy
     )
     await db.commit()
     
-    return {"user_id": user_id, "symbol": symbol, "quantity": quantity}
+    return {"user_id": user_id, "symbol": symbol, "quantity": round(quantity, 2)}
