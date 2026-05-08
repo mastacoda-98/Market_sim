@@ -7,6 +7,7 @@ from api.websockets import router as ws_router
 from api.users import router as users_router
 from api.utils.orders import cleanup_old_trades
 from db.db_connect import AsyncSessionLocal
+from fastapi.middleware.cors import CORSMiddleware
 
 scheduler = AsyncIOScheduler()
 
@@ -26,7 +27,18 @@ async def lifespan(app: fastapi.FastAPI):
     scheduler.shutdown()
     print("Scheduled task stopped")
 
+
+
 app = fastapi.FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(orders_router, prefix="/api")
 app.include_router(ws_router)
 app.include_router(users_router, prefix="/api")
