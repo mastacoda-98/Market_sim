@@ -54,7 +54,7 @@ async def delete_order(order_id: str, current_user: UserResponse = Depends(get_c
 
 @router.get("/stocks")
 async def get_stocks():
-    return [{"symbol": stock.symbol, "price": round(stock.price, 2)} for stock in engine.stocks.values()]
+    return [{"symbol": stock.symbol, "price": round(stock.price, 2), "stock_name": stock.stock_name} for stock in engine.stocks.values()]
 
 
 @router.get("/stocks/{symbol}")

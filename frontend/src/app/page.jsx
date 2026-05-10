@@ -28,9 +28,13 @@ export default function Home() {
 
   const [trades, setTrades] = useState([]);
 
+  const [fetchingData, setFetchingData] = useState(true);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setFetchingData(true);
+
         const stocksRes = await api.get("/api/stocks");
 
         const tradePromises = stocksRes.data.map((stock) =>
@@ -45,12 +49,26 @@ export default function Home() {
           let change = 0;
 
           if (stockTrades.length >= 2) {
-            const latest = stockTrades[0].price;
-            const oldest =
-              stockTrades[Math.min(stockTrades.length - 1, 19)].price;
+            const recentTrades = stockTrades.slice(0, 10);
 
-            if (oldest !== 0) {
-              change = ((latest - oldest) / oldest) * 100;
+            const oldTrades =
+              stockTrades.length >= 20
+                ? stockTrades.slice(10, 20)
+                : stockTrades.slice(
+                    Math.floor(stockTrades.length / 2),
+                    stockTrades.length,
+                  );
+
+            const recentAvg =
+              recentTrades.reduce((sum, trade) => sum + trade.price, 0) /
+              recentTrades.length;
+
+            const oldAvg =
+              oldTrades.reduce((sum, trade) => sum + trade.price, 0) /
+              oldTrades.length;
+
+            if (oldAvg !== 0) {
+              change = ((recentAvg - oldAvg) / oldAvg) * 100;
             }
           }
 
@@ -63,6 +81,8 @@ export default function Home() {
         setStocks(stocksWithChange);
       } catch (err) {
         console.error(err);
+      } finally {
+        setFetchingData(false);
       }
     };
 
@@ -125,10 +145,20 @@ export default function Home() {
     };
   }, [stocks.length]);
 
-  if (loading) {
+  if (loading || fetchingData) {
     return (
-      <div className="h-full bg-gray-50 flex items-center justify-center text-gray-500">
-        Loading...
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center -mt-20">
+        <div className="text-center">
+          <div className="h-10 w-10 rounded-full border-2 border-gray-300 border-t-gray-700 animate-spin mx-auto" />
+
+          <p className="mt-5 text-gray-600 font-medium">
+            Loading market data...
+          </p>
+
+          <p className="mt-2 text-sm text-gray-400">
+            If this takes too long, try reloading the page.
+          </p>
+        </div>
       </div>
     );
   }
@@ -142,11 +172,31 @@ export default function Home() {
         {/* LEFT */}
         <div className="w-1/2 flex justify-end pr-14">
           <div className="w-full max-w-[620px]">
-            <h1
-              className={`${sora.className} text-base font-medium text-gray-500`}
-            >
-              Live Simulated Market
-            </h1>
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+
+              <h1
+                className={`${sora.className} text-base font-medium text-gray-500`}
+              >
+                Live Simulated Market
+              </h1>
+            </div>
+
+            <div className="mt-3 flex items-center gap-3 text-xs text-gray-400">
+              <span>{stocks.length} Stocks</span>
+
+              <span>•</span>
+
+              <span className="text-green-600 font-medium">Market Open</span>
+
+              <span>•</span>
+
+              <span>Real-time Matching</span>
+            </div>
+
+            <p className="mt-3 text-sm text-gray-400">
+              Percentage change is calculated from the last 20 executed trades.
+            </p>
 
             <div className="mt-6 flex flex-col gap-1">
               {stocks.map((stock) => (
@@ -165,6 +215,8 @@ export default function Home() {
                     <div className="text-sm text-gray-500 mt-1">
                       {stock.stock_name}
                     </div>
+
+                    <div className="text-xs text-gray-400 mt-2"></div>
                   </div>
 
                   <div className="flex items-center gap-6">
@@ -186,28 +238,42 @@ export default function Home() {
                 </button>
               ))}
             </div>
+
+            <p className="mt-6 text-sm text-gray-400">
+              Live price reflects the most recent executed trade for each stock.
+            </p>
           </div>
         </div>
 
         {/* RIGHT */}
         <div className="w-1/2 flex justify-start pl-14">
           <div className="w-full max-w-[520px]">
-            <h1
-              className={`${sora.className} text-base font-medium text-gray-500`}
-            >
-              Live Trades
-            </h1>
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
 
-            <div className="mt-4 flex flex-col">
+              <h1
+                className={`${sora.className} text-base font-medium text-gray-500`}
+              >
+                Live Trades
+              </h1>
+            </div>
+
+            <div className="mt-4 flex flex-col gap-1">
               {trades.map((trade, i) => (
                 <div
-                  key={i}
-                  className="flex items-center justify-between px-4 py-2.5 rounded-xl hover:bg-gray-100 transition"
+                  key={`${trade.symbol}-${trade.timestamp}-${i}`}
+                  className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-gray-100 transition-all duration-300 animate-in fade-in slide-in-from-top-1"
                 >
-                  <div
-                    className={`${plex.className} text-lg font-semibold text-gray-900`}
-                  >
-                    {trade.symbol}
+                  <div>
+                    <div
+                      className={`${plex.className} text-lg font-semibold text-gray-900`}
+                    >
+                      {trade.symbol}
+                    </div>
+
+                    <div className="text-xs text-gray-400 mt-1">
+                      {new Date(trade.timestamp).toLocaleTimeString()}
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-5 text-sm">
@@ -222,6 +288,10 @@ export default function Home() {
                 </div>
               ))}
             </div>
+
+            <p className="mt-6 text-sm text-gray-400">
+              Trades are streamed live as orders are matched in the market.
+            </p>
           </div>
         </div>
       </div>

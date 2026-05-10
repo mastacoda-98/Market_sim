@@ -91,7 +91,7 @@ export default function Navbar() {
                 <div className="text-gray-500">
                   Funds:&nbsp;
                   <span className="font-semibold text-gray-800">
-                    ₹{user?.funds?.toLocaleString?.() || "0"}
+                    ₹{user?.credits?.toLocaleString?.() || "0"}
                   </span>
                 </div>
 

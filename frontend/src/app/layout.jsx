@@ -42,7 +42,7 @@ export default function RootLayout({ children }) {
           <div className="flex flex-col h-screen">
             <Navbar />
 
-            <main className="flex-1 overflow-hidden margin-top-16">
+            <main className="flex-1 overflow-hidden ">
               {children}
               <Toaster position="top-center" />
             </main>

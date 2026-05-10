@@ -18,6 +18,8 @@ import {
   TableHead,
 } from "@/components/ui/table";
 
+import OrderDialog from "@/app/stocks/orderDialog";
+
 export default function StockPage() {
   const { symbol } = useParams();
   const router = useRouter();
@@ -147,13 +149,17 @@ export default function StockPage() {
           </div>
 
           <div className="flex gap-2">
-            <Button className="h-9 px-4 text-xs rounded-lg bg-green-100 text-green-700 hover:bg-green-200 border border-green-300">
-              Buy
-            </Button>
+            <OrderDialog
+              type="buy"
+              symbol={stock.symbol}
+              currentPrice={stock.price}
+            />
 
-            <Button className="h-9 px-4 text-xs rounded-lg bg-red-100 text-red-700 hover:bg-red-200 border border-red-300">
-              Sell
-            </Button>
+            <OrderDialog
+              type="sell"
+              symbol={stock.symbol}
+              currentPrice={stock.price}
+            />
           </div>
         </div>
 
