@@ -28,10 +28,11 @@ class Stock:
         
     
 stocks = {
-    "BITM": Stock("1", "BIT Mesra", "BITM", 2000),
+    "BITM": Stock("1", "Birla Institute of Technology", "BITM", 2000),
     "TECHNO": Stock("2", "Techno Store", "TECHNO", 50),
     "DWNS": Stock("3", "Down South Cafe", "DWNS", 100),
-    "DOMINOS": Stock("4", "Dominos", "DOMINOS", 300),
+    "TURC": Stock("4", "Turchi Point", "TURC", 300),
+    "CHN": Stock("5", "Chunnu Store", "CHN", 200)
 }
 
 class Trade: 

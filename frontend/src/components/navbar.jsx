@@ -1,6 +1,9 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
+
 import { Sora } from "next/font/google";
+
 import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/context/authContext";
@@ -29,11 +32,60 @@ export default function Navbar() {
 
   const router = useRouter();
 
+  const [portfolio, setPortfolio] = useState([]);
+
+  const [stockPrices, setStockPrices] = useState({});
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const fetchPortfolioData = async () => {
+      try {
+        const portfolioRes = await api.get("/api/me/portfolio");
+
+        const holdings = portfolioRes.data.portfolio || [];
+
+        setPortfolio(holdings);
+
+        if (!holdings.length) return;
+
+        const stockRequests = holdings.map((item) =>
+          api.get(`/api/stocks/${item.symbol}`),
+        );
+
+        const stockResponses = await Promise.all(stockRequests);
+
+        const prices = {};
+
+        stockResponses.forEach((res) => {
+          prices[res.data.symbol] = res.data.price;
+        });
+
+        setStockPrices(prices);
+      } catch (err) {
+        console.error("Failed to fetch portfolio pnl", err);
+      }
+    };
+
+    fetchPortfolioData();
+  }, [isLoggedIn]);
+
+  const pnl = useMemo(() => {
+    return portfolio.reduce((sum, item) => {
+      const currentPrice = stockPrices[item.symbol] || 0;
+
+      const currentValue = currentPrice * Number(item.quantity || 0);
+
+      return sum + (currentValue - Number(item.total_invested || 0));
+    }, 0);
+  }, [portfolio, stockPrices]);
+
   const handleLogout = async () => {
     try {
       await api.post("/api/logout");
 
       setUser(null);
+
       setIsLoggedIn(false);
 
       toast.success("Logged out");
@@ -54,6 +106,7 @@ export default function Navbar() {
             className={`${sora.className} text-3xl font-bold hover:opacity-80 transition cursor-pointer`}
           >
             <span className="text-gray-800">trade</span>
+
             <span className="text-purple-700">Sim.</span>
           </button>
 
@@ -82,7 +135,10 @@ export default function Navbar() {
             </div>
           )}
         </div>
-
+        <div className="hidden lg:flex items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-xs font-medium text-purple-700">
+          <div className="h-2 w-2 rounded-full bg-purple-600 animate-pulse" />
+          Running simulated trading bots
+        </div>
         {/* RIGHT */}
         <div className="flex items-center gap-4">
           {isLoggedIn ? (
@@ -97,11 +153,13 @@ export default function Navbar() {
 
                 <div
                   className={`font-semibold ${
-                    (user?.pnl || 0) >= 0 ? "text-green-600" : "text-red-500"
+                    pnl >= 0 ? "text-green-600" : "text-red-500"
                   }`}
                 >
-                  {(user?.pnl || 0) >= 0 ? "+" : "-"}₹
-                  {Math.abs(user?.pnl || 0).toLocaleString()}
+                  {pnl >= 0 ? "+" : "-"}₹
+                  {Math.abs(pnl).toLocaleString(undefined, {
+                    maximumFractionDigits: 2,
+                  })}
                 </div>
               </div>
 
@@ -116,7 +174,7 @@ export default function Navbar() {
                   </button>
                 </DropdownMenuTrigger>
 
-                <DropdownMenuContent align="end" className="w-44 rounded-2xl">
+                <DropdownMenuContent align="end" className="w-44 rounded-xl">
                   <DropdownMenuItem
                     onClick={() => router.push("/profile")}
                     className="cursor-pointer"
@@ -137,14 +195,14 @@ export default function Navbar() {
             <div className="flex items-center gap-2">
               <Button
                 onClick={() => router.push("/auth/login")}
-                className="bg-white text-purple-700 border border-purple-200 hover:bg-purple-50 rounded-xl"
+                className="bg-white text-purple-700 border border-purple-200 hover:bg-purple-50 rounded-lg"
               >
                 Login
               </Button>
 
               <Button
                 onClick={() => router.push("/auth/signup")}
-                className="bg-purple-700 hover:bg-purple-800 text-white rounded-xl"
+                className="bg-purple-700 hover:bg-purple-800 text-white rounded-lg"
               >
                 Sign up
               </Button>
