@@ -100,7 +100,7 @@ export default function Home() {
 
     const sockets = stocks.map((stock) => {
       const ws = new WebSocket(
-        `${process.env.NEXT_PUBLIC_WS_URL}/ws/${stock.symbol}`,
+        `${process.env.NEXT_PUBLIC_WS_URL}ws/${stock.symbol}`,
       );
 
       ws.onmessage = (event) => {
