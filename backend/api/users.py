@@ -59,13 +59,13 @@ async def login(login_req: LoginRequest, db: AsyncSession = Depends(get_db)):
     access_token = create_access_token(user.email)
     
     response = Response(content='{"access_token":"' + access_token + '","token_type":"bearer"}', media_type="application/json")
-    response.set_cookie(key="access_token", value=access_token, httponly=True)
+    response.set_cookie(key="access_token", value=access_token, httponly=True, samesite="none", secure=True)
     return response
 
 @router.post("/logout")
 async def logout():
     response = Response(content='{"message":"Logged out successfully"}', media_type="application/json")
-    response.delete_cookie(key="access_token")
+    response.delete_cookie(key="access_token", samesite="none", secure=True)
     return response
 
 
