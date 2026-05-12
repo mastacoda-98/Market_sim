@@ -59,6 +59,7 @@ export default function StockPage() {
   useEffect(() => {
     if (!lastTrade) return;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAnimateTrade(true);
 
     const timeout = setTimeout(() => {

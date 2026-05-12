@@ -20,8 +20,8 @@ class TradeResponse(BaseModel):
     price: float
     quantity: float
     timestamp: datetime
-    buy_order_id: str
-    sell_order_id: str
+    buyer_id: int
+    seller_id: int
     
     @field_serializer('price', 'quantity')
     def serialize_decimals(self, value: float) -> float:

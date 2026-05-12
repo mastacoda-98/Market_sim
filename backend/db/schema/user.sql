@@ -23,8 +23,8 @@ CREATE TABLE user_portfolio (
 
 CREATE TABLE trade_history (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES users(id),
-    side VARCHAR(10) NOT NULL CHECK (side IN ('BUY', 'SELL')),
+    buyer_id INTEGER NOT NULL REFERENCES users(id),
+    seller_id INTEGER NOT NULL REFERENCES users(id),
     symbol VARCHAR(10) NOT NULL,
     price FLOAT NOT NULL,
     quantity FLOAT NOT NULL,
@@ -33,5 +33,6 @@ CREATE TABLE trade_history (
 
 -- Indexes for faster queries
 CREATE INDEX idx_user_portfolio_user_id ON user_portfolio(user_id);
-CREATE INDEX idx_trade_user_id ON trade_history(user_id);
+CREATE INDEX idx_trade_buyer_id ON trade_history(buyer_id);
+CREATE INDEX idx_trade_seller_id ON trade_history(seller_id);
 CREATE INDEX idx_trade_symbol ON trade_history(symbol);

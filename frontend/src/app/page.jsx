@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useRouter } from "next/navigation";
 
@@ -29,6 +29,10 @@ export default function Home() {
   const [trades, setTrades] = useState([]);
 
   const [fetchingData, setFetchingData] = useState(true);
+
+  const [flashMap, setFlashMap] = useState({});
+
+  const previousPrices = useRef({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -72,6 +76,8 @@ export default function Home() {
             }
           }
 
+          previousPrices.current[stock.symbol] = stock.price;
+
           return {
             ...stock,
             change,
@@ -99,6 +105,34 @@ export default function Home() {
         const data = JSON.parse(event.data);
 
         if (data.price) {
+          const oldPrice = previousPrices.current[stock.symbol];
+
+          let direction = null;
+
+          if (oldPrice !== undefined) {
+            if (data.price > oldPrice) {
+              direction = "up";
+            } else if (data.price < oldPrice) {
+              direction = "down";
+            }
+          }
+
+          previousPrices.current[stock.symbol] = data.price;
+
+          if (direction) {
+            setFlashMap((prev) => ({
+              ...prev,
+              [stock.symbol]: direction,
+            }));
+
+            setTimeout(() => {
+              setFlashMap((prev) => ({
+                ...prev,
+                [stock.symbol]: null,
+              }));
+            }, 700);
+          }
+
           setStocks((prev) =>
             prev.map((s) =>
               s.symbol === stock.symbol
@@ -118,7 +152,7 @@ export default function Home() {
               timestamp: new Date().toISOString(),
             };
 
-            return [newTrade, ...prev].slice(0, 20);
+            return [newTrade, ...prev].slice(0, 8);
           });
         }
       };
@@ -164,8 +198,8 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-16 py-10">
-      <div className="relative flex min-h-[80vh]">
+    <div className="h-screen bg-gray-50 px-16 pt-20 pb-20 overflow-hidden -mt-10">
+      <div className="relative flex h-full">
         {/* CENTER LINE */}
         <div className="absolute left-1/2 top-6 bottom-6 w-px bg-gray-200 -translate-x-1/2" />
 
@@ -199,44 +233,60 @@ export default function Home() {
             </p>
 
             <div className="mt-6 flex flex-col gap-1">
-              {stocks.map((stock) => (
-                <button
-                  key={stock.symbol}
-                  onClick={() => router.push(`/stocks/${stock.symbol}`)}
-                  className="w-full flex items-center justify-between px-6 py-5 rounded-2xl hover:bg-gray-100 transition text-left"
-                >
-                  <div>
-                    <div
-                      className={`${plex.className} text-2xl font-semibold text-gray-900 tracking-tight`}
-                    >
-                      {stock.symbol}
+              {stocks.map((stock) => {
+                const flash = flashMap[stock.symbol];
+
+                return (
+                  <button
+                    key={stock.symbol}
+                    onClick={() => router.push(`/stocks/${stock.symbol}`)}
+                    className={`
+                      w-full flex items-center justify-between
+                      px-6 py-5 rounded-2xl text-left
+                      transition-all duration-300
+
+                      ${flash === "up" ? "bg-green-50 border border-green-200" : ""}
+
+                      ${
+                        flash === "down"
+                          ? "bg-red-50 border border-red-200"
+                          : ""
+                      }
+
+                      ${!flash ? "hover:bg-gray-100" : ""}
+                    `}
+                  >
+                    <div>
+                      <div
+                        className={`${plex.className} text-2xl font-semibold text-gray-900 tracking-tight`}
+                      >
+                        {stock.symbol}
+                      </div>
+
+                      <div className="text-sm text-gray-500 mt-1">
+                        {stock.stock_name}
+                      </div>
                     </div>
 
-                    <div className="text-sm text-gray-500 mt-1">
-                      {stock.stock_name}
-                    </div>
+                    <div className="flex items-center gap-6">
+                      <div
+                        className={`text-sm font-semibold ${
+                          stock.change >= 0 ? "text-green-600" : "text-red-500"
+                        }`}
+                      >
+                        {stock.change >= 0 ? "+" : ""}
+                        {stock.change?.toFixed(2)}%
+                      </div>
 
-                    <div className="text-xs text-gray-400 mt-2"></div>
-                  </div>
-
-                  <div className="flex items-center gap-6">
-                    <div
-                      className={`text-sm font-semibold ${
-                        stock.change >= 0 ? "text-green-600" : "text-red-500"
-                      }`}
-                    >
-                      {stock.change >= 0 ? "+" : ""}
-                      {stock.change?.toFixed(2)}%
+                      <div
+                        className={`${plex.className} text-xl font-semibold text-gray-800 min-w-[90px] text-right`}
+                      >
+                        ₹{stock.price}
+                      </div>
                     </div>
-
-                    <div
-                      className={`${plex.className} text-xl font-semibold text-gray-800 min-w-[90px] text-right`}
-                    >
-                      ₹{stock.price}
-                    </div>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
 
             <p className="mt-6 text-sm text-gray-400">
@@ -247,7 +297,7 @@ export default function Home() {
 
         {/* RIGHT */}
         <div className="w-1/2 flex justify-start pl-14">
-          <div className="w-full max-w-[520px]">
+          <div className="w-full max-w-[520px] flex flex-col h-full">
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
 
@@ -258,11 +308,11 @@ export default function Home() {
               </h1>
             </div>
 
-            <div className="mt-4 flex flex-col gap-1">
+            <div className="mt-4 flex-1 flex flex-col -mb-5">
               {trades.map((trade, i) => (
                 <div
                   key={`${trade.symbol}-${trade.timestamp}-${i}`}
-                  className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-gray-100 transition-all duration-300 animate-in fade-in slide-in-from-top-1"
+                  className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-gray-100 transition-all duration-300 animate-in fade-in slide-in-from-top-1 flex-shrink-0"
                 >
                   <div>
                     <div
@@ -289,9 +339,11 @@ export default function Home() {
               ))}
             </div>
 
-            <p className="mt-6 text-sm text-gray-400">
-              Trades are streamed live as orders are matched in the market.
-            </p>
+            <div className="text-sm text-gray-400">
+              <p className="-mt-18.5">
+                Trades are streamed live as orders are matched in the market.
+              </p>
+            </div>
           </div>
         </div>
       </div>

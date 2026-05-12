@@ -143,9 +143,9 @@ async def get_user_portfolio(user_id: int, db: AsyncSession) -> list:
 async def get_user_trades(user_id: int, db: AsyncSession) -> list:
     result = await db.execute(
         text("""
-            SELECT id, side, symbol, price, quantity, timestamp 
+            SELECT id, buyer_id, seller_id, symbol, price, quantity, timestamp 
             FROM trade_history 
-            WHERE user_id = :user_id
+            WHERE buyer_id = :user_id OR seller_id = :user_id
             ORDER BY timestamp DESC
             LIMIT 100
         """),
@@ -155,13 +155,17 @@ async def get_user_trades(user_id: int, db: AsyncSession) -> list:
     rows = result.fetchall()
     trades = []
     for row in rows:
+        trade_id, buyer_id, seller_id, symbol, price, quantity, timestamp = row
+        side = "BUY" if buyer_id == user_id else "SELL"
         trades.append({
-            "trade_id": row[0],
-            "side": row[1],
-            "symbol": row[2],
-            "price": round(row[3], 2),
-            "quantity": round(row[4], 2),
-            "timestamp": row[5]
+            "trade_id": trade_id,
+            "buyer_id": buyer_id,
+            "seller_id": seller_id,
+            "side": side,
+            "symbol": symbol,
+            "price": round(price, 2),
+            "quantity": round(quantity, 2),
+            "timestamp": timestamp
         })
     
     return trades

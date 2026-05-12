@@ -3,42 +3,67 @@ from typing import Optional, List
 from datetime import datetime
 import asyncio
 from collections import deque
-from datetime import datetime
+
 
 class Stock:
-    def __init__(self, stock_id: str, stock_name: str, symbol: str, price: float = 50, about: Optional[str] = None):
+    def __init__(
+        self,
+        stock_id: str,
+        stock_name: str,
+        symbol: str,
+        price: float = 50,
+        about: Optional[str] = None,
+    ):
         self.stock_id = stock_id
         self.stock_name = stock_name
         self.symbol = symbol
         self.order_book = OrderBook()
         self.price = price
+        self.vwap_price = price
+
         self.about = about
-        
+
         self.trades = deque(maxlen=100)
-        self.day_high = price
-        self.day_low = price
-        self.tq = 0.0
-        self.q = 0.0
-        self.cur_minute = datetime.now()
-        
-    def getVWAP(self) -> float:
-        if self.q == 0:
+
+    def calculate_vwap(self, last_n: int = 20):
+        recent_trades = list(self.trades)[-last_n:]
+
+        if not recent_trades:
             return self.price
-        return self.tq / self.q
-        
-    
+
+        total_volume = sum(trade.quantity for trade in recent_trades)
+
+        if total_volume == 0:
+            return self.price
+
+        weighted_sum = sum(
+            trade.price * trade.quantity for trade in recent_trades
+        )
+
+        return weighted_sum / total_volume
+
+
 stocks = {
     "BITM": Stock("1", "Birla Institute of Technology", "BITM", 2000),
     "TECHNO": Stock("2", "Techno Store", "TECHNO", 50),
     "DWNS": Stock("3", "Down South Cafe", "DWNS", 100),
     "TURC": Stock("4", "Turchi Point", "TURC", 300),
-    "CHN": Stock("5", "Chunnu Store", "CHN", 200)
+    "CHN": Stock("5", "Chunnu Store", "CHN", 200),
 }
 
-class Trade: 
-    def __init__(self, symbol: str, price: float, quantity: float, 
-                 buy_order_id: str, sell_order_id: str, 
-                 buyer_user_id: str, seller_user_id: str, timestamp):
+
+class Trade:
+    def __init__(
+        self,
+        symbol: str,
+        price: float,
+        quantity: float,
+        buy_order_id: str,
+        sell_order_id: str,
+        buyer_user_id: str,
+        seller_user_id: str,
+        timestamp,
+    ):
         self.symbol = symbol
         self.price = price
         self.quantity = quantity
@@ -48,57 +73,69 @@ class Trade:
         self.seller_user_id = seller_user_id
         self.timestamp = timestamp
 
+
 class MatchingEngine:
     def __init__(self):
         self.stocks = stocks
         self.lock = asyncio.Lock()
-        
+
     async def process_order(self, order) -> Optional[List[Trade]]:
         async with self.lock:
             stock = self.stocks[order.symbol]
+
             if order.side == OrderSide.BUY:
                 stock.order_book.add_buy_order(order)
             else:
                 stock.order_book.add_sell_order(order)
-            
+
             trades = []
+
             while stock.order_book.can_match():
                 best_buy = stock.order_book.peek_best_buy()
                 best_sell = stock.order_book.peek_best_sell()
-                
+
                 if best_buy is None or best_sell is None:
                     break
-                
+
                 trade_price = best_sell.price
-                trade_quantity = min(best_buy.quantity, best_sell.quantity)
-                
+
+                trade_quantity = min(
+                    best_buy.quantity,
+                    best_sell.quantity,
+                )
+
                 buyer_user_id = best_buy.order_by
                 seller_user_id = best_sell.order_by
-                
+
                 best_buy.quantity -= trade_quantity
                 best_sell.quantity -= trade_quantity
+
                 if best_buy.quantity == 0:
                     stock.order_book.remove_order(best_buy.order_id)
+
                 if best_sell.quantity == 0:
                     stock.order_book.remove_order(best_sell.order_id)
-                
+
                 stock.price = trade_price
-                trade = Trade(order.symbol, trade_price, trade_quantity, best_buy.order_id, best_sell.order_id, buyer_user_id, seller_user_id, datetime.now())
+
+                trade = Trade(
+                    order.symbol,
+                    trade_price,
+                    trade_quantity,
+                    best_buy.order_id,
+                    best_sell.order_id,
+                    buyer_user_id,
+                    seller_user_id,
+                    datetime.now(),
+                )
+
                 trades.append(trade)
+
                 stock.trades.append(trade)
-                stock.day_high = max(stock.day_high, trade_price)
-                stock.day_low = min(stock.day_low, trade_price)
-                
-                now_min = datetime.now().replace(second=0, microsecond=0)
-                if stock.cur_minute != now_min:
-                    stock.cur_minute = now_min
-                    stock.q = 0.0
-                    stock.tq = 0.0
-                
-                stock.q += trade_quantity
-                stock.tq += trade_quantity * trade_price
-            
+
+                stock.vwap_price = stock.calculate_vwap()
+
             return trades
 
-engine = MatchingEngine()
 
+engine = MatchingEngine()

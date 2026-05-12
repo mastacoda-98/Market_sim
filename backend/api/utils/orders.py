@@ -132,30 +132,13 @@ async def save_trades_to_db(trades: List[Trade], db):
         await db.execute(
             text(
                 """
-                INSERT INTO trade_history (user_id, side, symbol, price, quantity, timestamp)
-                VALUES (:user_id, :side, :symbol, :price, :quantity, :timestamp)
+                INSERT INTO trade_history (buyer_id, seller_id, symbol, price, quantity, timestamp)
+                VALUES (:buyer_id, :seller_id, :symbol, :price, :quantity, :timestamp)
                 """
             ),
             {
-                "user_id": int(trade.buyer_user_id),
-                "side": "BUY",
-                "symbol": trade.symbol,
-                "price": trade.price,
-                "quantity": trade.quantity,
-                "timestamp": trade.timestamp
-            }
-        )
-        
-        await db.execute(
-            text(
-                """
-                INSERT INTO trade_history (user_id, side, symbol, price, quantity, timestamp)
-                VALUES (:user_id, :side, :symbol, :price, :quantity, :timestamp)
-                """
-            ),
-            {
-                "user_id": int(trade.seller_user_id),
-                "side": "SELL",
+                "buyer_id": int(trade.buyer_user_id),
+                "seller_id": int(trade.seller_user_id),
                 "symbol": trade.symbol,
                 "price": trade.price,
                 "quantity": trade.quantity,
@@ -379,7 +362,7 @@ async def get_recent_trades_from_db(symbol: str, db) -> List[TradeResponse]:
     
     result = await db.execute(
         text("""
-            SELECT symbol, price, quantity, timestamp
+            SELECT symbol, price, quantity, timestamp, buyer_id, seller_id
             FROM trade_history
             WHERE symbol = :symbol
             ORDER BY timestamp DESC
@@ -395,7 +378,7 @@ async def get_recent_trades_from_db(symbol: str, db) -> List[TradeResponse]:
             price=round(row[1], 2),
             quantity=round(row[2], 2),
             timestamp=row[3],
-            buy_order_id="",
-            sell_order_id=""
+            buyer_id=row[4],
+            seller_id=row[5]
         ))
     return trades

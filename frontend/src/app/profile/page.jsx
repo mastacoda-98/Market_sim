@@ -60,12 +60,14 @@ export default function ProfilePage() {
       try {
         setLoading(true);
 
+        // PORTFOLIO
         const portfolioRes = await api.get("/api/me/portfolio");
 
         const holdings = portfolioRes.data.portfolio || [];
 
         setPortfolio(holdings);
 
+        // CURRENT STOCK PRICES
         if (holdings.length) {
           const stockRequests = holdings.map((item) =>
             api.get(`/api/stocks/${item.symbol}`),
@@ -80,33 +82,21 @@ export default function ProfilePage() {
           });
 
           setStockPrices(prices);
-
-          const tradeRequests = holdings.map((item) =>
-            api.get(`/api/trades/${item.symbol}`),
-          );
-
-          const tradeResponses = await Promise.all(tradeRequests);
-
-          const allTrades = [];
-
-          tradeResponses.forEach((res) => {
-            const trades = res.data.trades || [];
-
-            trades.forEach((trade) => {
-              allTrades.push(trade);
-            });
-          });
-
-          const sortedTrades = allTrades
-            .sort(
-              (a, b) =>
-                new Date(b.timestamp).getTime() -
-                new Date(a.timestamp).getTime(),
-            )
-            .slice(0, 20);
-
-          setRecentTrades(sortedTrades);
         }
+
+        // USER TRADES ONLY
+        const tradesRes = await api.get("/api/me/trades");
+
+        const trades = tradesRes.data.trades || [];
+
+        const sortedTrades = trades
+          .sort(
+            (a, b) =>
+              new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+          )
+          .slice(0, 20);
+
+        setRecentTrades(sortedTrades);
       } catch (err) {
         console.error(err);
 
@@ -117,7 +107,7 @@ export default function ProfilePage() {
     };
 
     fetchData();
-  }, [isLoggedIn, authLoading]);
+  }, [isLoggedIn, authLoading, user?.user_id]);
 
   const totalInvested = useMemo(() => {
     return portfolio.reduce(
@@ -375,11 +365,11 @@ export default function ProfilePage() {
         <div className="border border-gray-200 bg-white flex flex-col">
           <div className="border-b border-gray-200 px-5 py-4">
             <h2 className="text-xl font-semibold text-gray-900">
-              Recent Trades
+              Your Recent Trades
             </h2>
 
             <p className="mt-1 text-xs text-gray-500">
-              Last 20 executed trades.
+              Last 20 trades executed by your account.
             </p>
           </div>
 
@@ -394,6 +384,8 @@ export default function ProfilePage() {
                   <TableRow className="hover:bg-white">
                     <TableHead>Symbol</TableHead>
 
+                    <TableHead>Side</TableHead>
+
                     <TableHead>Qty</TableHead>
 
                     <TableHead>Price</TableHead>
@@ -403,23 +395,35 @@ export default function ProfilePage() {
                 </TableHeader>
 
                 <TableBody>
-                  {recentTrades.map((trade, i) => (
-                    <TableRow key={i} className="hover:bg-purple-50/40">
-                      <TableCell className="font-semibold text-gray-900">
-                        {trade.symbol}
-                      </TableCell>
+                  {recentTrades.map((trade, i) => {
+                    const side =
+                      trade?.seller_id == user?.user_id ? "SELL" : "BUY";
 
-                      <TableCell>{formatDecimal(trade.quantity)}</TableCell>
+                    const sideClass =
+                      side === "BUY"
+                        ? "text-green-600 font-semibold"
+                        : "text-red-600 font-semibold";
 
-                      <TableCell className="font-medium">
-                        ₹{formatDecimal(trade.price)}
-                      </TableCell>
+                    return (
+                      <TableRow key={i} className="hover:bg-purple-50/40">
+                        <TableCell className="font-semibold text-gray-900">
+                          {trade.symbol}
+                        </TableCell>
 
-                      <TableCell className="text-right text-xs text-gray-500">
-                        {new Date(trade.timestamp).toLocaleTimeString()}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        <TableCell className={sideClass}>{side}</TableCell>
+
+                        <TableCell>{formatDecimal(trade.quantity)}</TableCell>
+
+                        <TableCell className="font-medium">
+                          ₹{formatDecimal(trade.price)}
+                        </TableCell>
+
+                        <TableCell className="text-right text-xs text-gray-500">
+                          {new Date(trade.timestamp).toLocaleTimeString()}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             )}

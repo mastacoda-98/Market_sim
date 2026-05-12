@@ -1,3 +1,4 @@
+import asyncio
 import fastapi 
 from contextlib import asynccontextmanager
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -8,6 +9,7 @@ from api.users import router as users_router
 from api.utils.orders import cleanup_old_trades
 from db.db_connect import AsyncSessionLocal
 from fastapi.middleware.cors import CORSMiddleware
+from bots.bots import start_bots
 
 scheduler = AsyncIOScheduler()
 
@@ -22,8 +24,15 @@ async def lifespan(app: fastapi.FastAPI):
     scheduler.add_job(cleanup_trades_task, "interval", hours=24, id="cleanup_trades")
     scheduler.start()
     print("Scheduled task started: cleanup trades every 24 hours")
+    
+    # Start bots
+    bot_task = asyncio.create_task(start_bots())
+    print("Bots started")
+    
     yield
+    
     # Shutdown
+    bot_task.cancel()
     scheduler.shutdown()
     print("Scheduled task stopped")
 

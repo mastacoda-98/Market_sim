@@ -38,6 +38,7 @@ export default function PortfolioPage() {
     if (authLoading) return;
 
     if (!isLoggedIn) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoading(false);
       return;
     }
