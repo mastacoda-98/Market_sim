@@ -342,7 +342,7 @@ export default function Home() {
             </div>
 
             <div className="text-sm text-gray-400">
-              <p className="-mt-18.5">
+              <p className="">
                 Trades are streamed live as orders are matched in the market.
               </p>
             </div>

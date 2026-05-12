@@ -47,8 +47,18 @@ export default function RootLayout({ children }) {
               <Toaster position="top-center" />
             </main>
 
-            <footer className="sticky bottom-0 z-50 bg-white/95 border-t border-gray-200 px-6 py-4 text-xs text-gray-500 flex justify-between items-center backdrop-blur-sm">
-              <div>
+            <footer
+              className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 border-t border-gray-200 px-6 text-[12px] text-gray-500 flex justify-between items-center gap-1 backdrop-blur-sm"
+              style={{
+                height: "60px",
+                lineHeight: "16px",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                className="flex items-center gap-1 px-7"
+                style={{ lineHeight: "1" }}
+              >
                 Built by Gurpreet Singh • {}
                 <a
                   href="https://drive.google.com/file/d/1gZbBrZj-76eDs0qEhWd97vwpHwUZq5mL/view?usp=sharing"
@@ -59,7 +69,10 @@ export default function RootLayout({ children }) {
                 </a>
               </div>
 
-              <div className="flex gap-4">
+              <div
+                className="flex gap-4 items-center px-6"
+                style={{ lineHeight: "1" }}
+              >
                 <a
                   href="mailto:gurp3773@gmail.com"
                   className="hover:text-gray-700 transition"
@@ -78,7 +91,7 @@ export default function RootLayout({ children }) {
                 <a
                   href="https://www.linkedin.com/in/gurpreet-singh-sarmotta-402a6a304/"
                   target="_blank"
-                  className="hover:text-gray-700 transition"
+                  className="hover:text-gray-700 transition text-[12px]"
                 >
                   LinkedIn
                 </a>
