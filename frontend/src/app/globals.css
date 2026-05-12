@@ -132,6 +132,7 @@ html::-webkit-scrollbar {
   }
   body {
     @apply bg-background text-foreground;
+    zoom: 0.9;
   }
   html {
     @apply font-sans;
