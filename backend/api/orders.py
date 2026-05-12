@@ -84,3 +84,8 @@ async def get_recent_trades(symbol: str, db = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Stock not found")
     recent_trades = await get_recent_trades_from_db(symbol, db)
     return {"trades": recent_trades}
+
+@router.delete("/orders/{order_id}")
+async def cancel_user_order(order_id: str, current_user: UserResponse = Depends(get_current_user), db = Depends(get_db)):
+    result = await cancel_order(order_id, int(current_user.user_id), db)
+    return result

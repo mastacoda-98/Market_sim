@@ -127,7 +127,7 @@ export default function StockPage() {
   }, [symbol, isLoggedIn]);
 
   useEffect(() => {
-    const ws = new WebSocket(`ws://localhost:8000/ws/${symbol}`);
+    const ws = new WebSocket(`${process.env.NEXT_PUBLIC_WS_URL}/ws/${symbol}`);
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);

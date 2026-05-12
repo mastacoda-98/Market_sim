@@ -25,6 +25,8 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const [cancellingOrderId, setCancellingOrderId] = useState(null);
+
   useEffect(() => {
     if (authLoading) return;
 
@@ -39,6 +41,7 @@ export default function OrdersPage() {
         setLoading(true);
 
         const res = await api.get("/api/orders");
+
         setOrders(res.data.orders || []);
 
         setError(null);
@@ -53,14 +56,31 @@ export default function OrdersPage() {
     fetchOrders();
   }, [isLoggedIn, authLoading]);
 
+  const handleCancelOrder = async (orderId) => {
+    try {
+      setCancellingOrderId(orderId);
+
+      await api.delete(`api/orders/${orderId}`);
+
+      setOrders((prev) => prev.filter((order) => order.order_id !== orderId));
+    } catch (err) {
+      console.error(err);
+      setError("Failed to cancel order");
+    } finally {
+      setCancellingOrderId(null);
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="h-screen flex items-center justify-center bg-[#fafafa]">
         <div className="text-center">
           <div className="h-8 w-8 rounded-full border border-gray-300 border-t-purple-700 animate-spin mx-auto" />
+
           <h2 className="mt-5 text-lg font-medium text-gray-900">
             Loading Orders
           </h2>
+
           <p className="mt-2 text-sm text-gray-500">
             Fetching your order history...
           </p>
@@ -83,6 +103,7 @@ export default function OrdersPage() {
 
           <div className="mt-6 flex gap-3">
             <Button onClick={() => router.push("/login")}>Login</Button>
+
             <Button variant="outline" onClick={() => router.push("/signup")}>
               Signup
             </Button>
@@ -94,12 +115,11 @@ export default function OrdersPage() {
 
   return (
     <div className="h-screen bg-[#fafafa] px-10 py-10 overflow-hidden flex flex-col">
-      {/* IMPORTANT: allows flex children to shrink */}
       <div className="mx-auto max-w-7xl flex flex-col flex-1 min-h-0 min-w-0 w-full">
-        {/* HEADER */}
         <div className="flex items-end justify-between border-b border-gray-200 pb-6 shrink-0">
           <div>
             <h1 className="text-3xl font-semibold text-gray-900">Orders</h1>
+
             <p className="mt-2 text-sm text-gray-500">
               Your trade execution history
             </p>
@@ -114,7 +134,6 @@ export default function OrdersPage() {
           </Button>
         </div>
 
-        {/* TABLE WRAPPER */}
         <div className="mt-8 h-[60vh] max-h-[650px] border border-gray-200 bg-white flex flex-col overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 shrink-0">
             <h2 className="text-lg font-semibold text-gray-900">Order Book</h2>
@@ -125,6 +144,7 @@ export default function OrdersPage() {
               <p className="text-lg font-medium text-gray-900">
                 No orders found
               </p>
+
               <p className="mt-2 text-sm text-gray-500">
                 You haven’t placed any trades yet.
               </p>
@@ -138,16 +158,24 @@ export default function OrdersPage() {
             </div>
           ) : (
             <div className="flex-1 min-h-0 overflow-auto">
-              <Table className="w-full min-w-[900px]">
+              <Table className="w-full min-w-[1050px]">
                 <TableHeader className="sticky top-0 bg-white z-10">
                   <TableRow className="bg-gray-50 hover:bg-gray-50">
                     <TableHead>Symbol</TableHead>
+
                     <TableHead>Side</TableHead>
+
                     <TableHead>Price</TableHead>
+
                     <TableHead>Quantity</TableHead>
+
                     <TableHead>Total</TableHead>
+
                     <TableHead>Timestamp</TableHead>
+
                     <TableHead>Expires At</TableHead>
+
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
 
@@ -177,6 +205,7 @@ export default function OrdersPage() {
                         </TableCell>
 
                         <TableCell>₹{formatDecimal(order.price)}</TableCell>
+
                         <TableCell>{formatDecimal(order.quantity)}</TableCell>
 
                         <TableCell className="font-medium">
@@ -189,6 +218,20 @@ export default function OrdersPage() {
 
                         <TableCell className="text-sm text-gray-500">
                           {new Date(order.expires_at).toLocaleString()}
+                        </TableCell>
+
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={cancellingOrderId === order.order_id}
+                            onClick={() => handleCancelOrder(order.order_id)}
+                            className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                          >
+                            {cancellingOrderId === order.order_id
+                              ? "Cancelling..."
+                              : "Cancel"}
+                          </Button>
                         </TableCell>
                       </TableRow>
                     );

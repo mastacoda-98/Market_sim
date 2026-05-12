@@ -27,7 +27,7 @@ class BotOrder:
         price: float,
         quantity: int,
         order_by: str,
-        timestamp: datetime = None,
+        timestamp: datetime = None, # type: ignore
         is_expired: datetime = datetime.now() + timedelta(minutes=6),
     ):
         self.order_id = str(uuid.uuid4())
@@ -147,7 +147,7 @@ class BaseBot:
                     for _ in range(random.randint(300, 600)):
                         if manager.has_active_users():
                             break
-                        await asyncio.sleep(1)
+                        await asyncio.sleep(3)
 
             except Exception as e:
                 print(f"[{self.bot_name}] Exception: {e}")
@@ -158,57 +158,40 @@ class MarketMakerBot(BaseBot):
     def calculate_price(self, stock, side):
         vwap = stock.vwap_price or stock.price
 
-        deviation = random.uniform(0.0005, 0.003)
+        # Small spread for tight matching
+        spread = random.uniform(0.0005, 0.002)
 
         if side == OrderSide.BUY:
-            return vwap * (1 + deviation)
+            return vwap * (1 - spread)
 
-        return vwap * (1 - deviation)
+        return vwap * (1 + spread)
 
 
 class RetailBot(BaseBot):
     def calculate_price(self, stock, side):
         vwap = stock.vwap_price or stock.price
 
-        aggressive = random.random() < 0.7
-
-        if aggressive:
-            deviation = random.uniform(0.002, 0.01)
-
-            if side == OrderSide.BUY:
-                return vwap * (1 + deviation)
-
-            return vwap * (1 - deviation)
-
-        deviation = random.uniform(0.01, 0.03)
-
-        direction = random.choice([-1, 1])
-
-        return vwap * (1 + (direction * deviation))
+        if side == OrderSide.BUY:
+            # Buyers buy higher - pushes prices up
+            bias = random.uniform(0.002, 0.010)
+            return vwap * (1 + bias)
+        
+        if random.random() < 0.7:
+            return vwap * (1 + random.uniform(0.001, 0.008))
+        else:
+            return vwap * (1 - random.uniform(0.0005, 0.003))
 
 
 class MomentumBot(BaseBot):
     def calculate_price(self, stock, side):
         vwap = stock.vwap_price or stock.price
 
-        trades = list(stock.trades)
-
-        if len(trades) >= 2:
-            latest = trades[-1].price
-            previous = trades[-2].price
-
-            if latest >= previous:
-                return vwap * (
-                    1 + random.uniform(0.003, 0.012)
-                )
-
-            return vwap * (
-                1 - random.uniform(0.003, 0.012)
-            )
-
-        return vwap * (
-            1 + random.uniform(-0.005, 0.005)
-        )
+        if side == OrderSide.BUY:
+            # Buyers push prices higher
+            return vwap * (1 + random.uniform(0.001, 0.008))
+        
+        # Sellers mostly sell at vwap or slightly higher
+        return vwap * (1 + random.uniform(0.0005, 0.010))
 
 
 async def start_bots():

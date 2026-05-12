@@ -99,7 +99,9 @@ export default function Home() {
     if (!stocks.length) return;
 
     const sockets = stocks.map((stock) => {
-      const ws = new WebSocket(`ws://localhost:8000/ws/${stock.symbol}`);
+      const ws = new WebSocket(
+        `${process.env.NEXT_PUBLIC_WS_URL}/ws/${stock.symbol}`,
+      );
 
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);

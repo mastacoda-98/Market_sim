@@ -34,9 +34,11 @@ export default function OrderDialog({ type, symbol, currentPrice }) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPrice(currentPrice || "");
-  }, [currentPrice]);
+    if (!open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPrice(currentPrice || "");
+    }
+  }, [currentPrice, open]);
 
   const total = useMemo(() => {
     const p = Number(price);
