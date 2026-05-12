@@ -6,7 +6,7 @@ A real-time stock market simulation platform where users can trade stocks, execu
 
 ## About
 
-[tradeSim.] is a full-stack trading simulation platform that provides a realistic stock market experience. Users can create accounts, place buy/sell orders, track their portfolio, and see real-time order matching. The backend uses a high-performance matching engine that processes orders instantly, while the frontend provides a responsive dashboard with live price updates via WebSockets.
+TradeSim. is a full-stack trading simulation platform that provides a realistic stock market experience. Users can create accounts, place buy/sell orders, track their portfolio, and see real-time order matching. The backend uses a high-performance matching engine that processes orders instantly, while the frontend provides a responsive dashboard with live price updates via WebSockets.
 
 ## Tech Stack
 
